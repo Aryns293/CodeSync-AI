@@ -4,6 +4,10 @@
 
 A collaborative online IDE that enables multiple developers to code together in real time, execute programs in multiple languages, and leverage AI-powered code reviews for better code quality and productivity.
 
+# 🌐 Live Demo
+
+**Application:** https://codesync-ai-l5xe.onrender.com
+
 ---
 
 # 📝 Introduction
