@@ -223,12 +223,17 @@ io.on('connection', (socket) => {
         console.log('A user disconnected');
     })
 });
+
 const PORT = process.env.PORT || 5001;
-const __dirname = path.resolve();
-app.use(express.static(path.join(__dirname, '../frontend/dist')));
-app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
+
+const ROOT = path.join(import.meta.dirname, "..");
+
+app.use(express.static(path.join(ROOT, "frontend/dist")));
+
+app.get("*", (_, res) => {
+    res.sendFile(path.join(ROOT, "frontend/dist/index.html"));
 });
+
 server.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
