@@ -10,6 +10,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Never run submitted code as root inside the container.
-RUN useradd -m -u 1000 runner
+RUN useradd -m runner
 USER runner
 WORKDIR /sandbox

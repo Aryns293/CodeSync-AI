@@ -57,9 +57,9 @@ export async function executeInSandbox({ language, code, stdin }) {
     "--network",
     "none", // no internet access from submitted code
     "--memory",
-    "128m",
+    "512m",
     "--memory-swap",
-    "128m", // disable swap so memory limit is real
+    "512m",
     "--cpus",
     "0.5",
     "--pids-limit",

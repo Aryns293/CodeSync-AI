@@ -196,15 +196,22 @@ io.on('connection', (socket) => {
             `;
 
             const response = await ai.models.generateContent({
-                model: "gemini-2.5-flash",
+                model: "gemini-3.1-flash-lite",
                 contents: prompt,
             });
 
             io.to(roomId).emit("AIReview", response.text);
         } catch (error) {
-            console.error("getAIReview error:", error);
-            io.to(roomId).emit("AIReview", "Unable to review currently, please try later.");
+        console.error("===== GEMINI ERROR =====");
+        console.error(error);
+        console.error(error.message);
+
+        if (error.response) {
+            console.error(error.response);
         }
+
+        io.to(roomId).emit("AIReview", error.message);
+    }
     })
 
     socket.on("disconnect" , () => {
