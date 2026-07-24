@@ -11,7 +11,7 @@ import dotenv from 'dotenv';
 dotenv.config({ path: path.join(import.meta.dirname, '../.env') });
 import { GoogleGenAI } from "@google/genai";
 import { executeInSandbox, sandboxSupportsLanguage } from "./sandbox.js";
-import { executeWithJudge0, judge0IsConfigured } from "./judge0.js";
+import { executeWithJDoodle, jdoodleIsConfigured } from "./jdoodle.js";
 
 const app = express();
 
@@ -56,7 +56,7 @@ if (!process.env.GEMINI_API_KEY) {
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 // Primary execution path is the local Docker sandbox (see backend/sandbox.js).
-// Set USE_DOCKER_SANDBOX=false to force Judge0 (e.g. on a host with no Docker daemon).
+// Set USE_DOCKER_SANDBOX=false to force JDoodle (e.g. on a host with no Docker daemon).
 const USE_DOCKER_SANDBOX = process.env.USE_DOCKER_SANDBOX !== "false";
 
 function detectLang(code) {
@@ -157,13 +157,13 @@ io.on('connection', (socket) => {
             if (USE_DOCKER_SANDBOX && sandboxSupportsLanguage(language)) {
                 result = await executeInSandbox({ language, code, stdin });
                 // Graceful degradation: if this host has no Docker daemon, fall back
-                // to Judge0 automatically instead of just failing the request.
-                if (result.output?.startsWith("Error: sandbox unavailable") && judge0IsConfigured()) {
-                    console.warn("Docker sandbox unavailable, falling back to Judge0");
-                    result = await executeWithJudge0({ language, code, stdin });
+                // to JDoodle automatically instead of just failing the request.
+                if (result.output?.startsWith("Error: sandbox unavailable") && jdoodleIsConfigured()) {
+                    console.warn("Docker sandbox unavailable, falling back to JDoodle");
+                    result = await executeWithJDoodle({ language, code, stdin });
                 }
-            } else if (judge0IsConfigured()) {
-                result = await executeWithJudge0({ language, code, stdin });
+            } else if (jdoodleIsConfigured()) {
+                result = await executeWithJDoodle({ language, code, stdin });
             } else {
                 result = { output: `Error: no execution provider configured for "${language}"` };
             }
