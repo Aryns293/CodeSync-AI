@@ -30,12 +30,14 @@ export default function Navbar() {
                     </Link>
 
                     <div className="flex items-center space-x-6">
-                        {/* Only show these links on the landing page or dashboard */}
-                        <div className="hidden md:flex space-x-6 text-sm font-medium text-slate-300">
-                            <Link to="/" className="hover:text-white transition-colors">Home</Link>
-                            <a href="#demo" className="hover:text-white transition-colors">Demo</a>
-                            <a href="#features" className="hover:text-white transition-colors">Features</a>
-                        </div>
+                        {/* Only show these links on the landing page */}
+                        {location.pathname === '/' && (
+                            <div className="hidden md:flex space-x-6 text-sm font-medium text-slate-300">
+                                <Link to="/" className="hover:text-white transition-colors">Home</Link>
+                                <a href="#demo" className="hover:text-white transition-colors">Demo</a>
+                                <a href="#features" className="hover:text-white transition-colors">Features</a>
+                            </div>
+                        )}
 
                         <div className="flex items-center space-x-4 pl-6 border-l border-white/10">
                             {user ? (
