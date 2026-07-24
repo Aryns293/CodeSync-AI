@@ -12,9 +12,9 @@ A collaborative online IDE that enables multiple developers to code together in 
 
 # 📝 Introduction
 
-CodeSync AI is a real-time collaborative Integrated Development Environment (IDE) that allows multiple users to work on the same codebase simultaneously.
+CodeSync AI is a real-time collaborative Integrated Development Environment (IDE) featuring a stunning, premium glassy UI with real-time code synchronization. It allows multiple users to work on the same codebase simultaneously.
 
-Developers can create shared coding rooms, edit code together, execute programs instantly, and receive AI-powered code reviews for optimization, readability improvements, and bug detection.
+Developers can create user accounts, manage shared coding rooms, edit code together, execute programs instantly, and receive AI-powered code reviews for optimization, readability improvements, and bug detection.
 
 The platform supports multiple programming languages and provides a seamless collaborative experience using WebSockets.
 
@@ -62,12 +62,13 @@ Supported languages:
 
 ---
 
-## 🌐 Modern Tech Stack
+## 🌐 Modern Tech Stack & Premium UI
 
-- Responsive React frontend
-- Node.js/Express backend
-- Socket.IO based communication
-- AI-powered code analysis
+- Stunning, responsive "glassmorphism" React frontend
+- Node.js/Express backend with MongoDB persistence
+- JWT-based User Authentication & Authorization
+- Socket.IO based real-time communication
+- AI-powered code analysis using Gemini
 - Dockerized code execution with a resilient fallback path
 
 ---
@@ -85,10 +86,10 @@ Supported languages:
 
 | Layer | Technologies |
 |-------|--------------|
-| **Frontend** | React.js, JavaScript, CSS, Socket.IO Client |
-| **Backend** | Node.js, Express.js, Socket.IO |
+| **Frontend** | React.js, TailwindCSS, Framer Motion, Socket.IO Client |
+| **Backend** | Node.js, Express.js, Socket.IO, MongoDB, Mongoose, JWT, Zod |
 | **AI** | Gemini API (`@google/genai`) |
-| **Code Execution** | Docker (primary), Judge0 (fallback) |
+| **Code Execution** | Docker (primary), JDoodle (fallback) |
 | **Others** | Axios, Vite, Nodemon, PM2 (production) |
 
 ---
@@ -156,15 +157,19 @@ npm run dev                 # opens on :5173
 .
 ├── backend/
 │   ├── index.js
-│   ├── sandbox.js              # Docker execution engine
-│   ├── judge0.js                # Judge0 fallback provider
-│   └── execution-image/
-│       └── Dockerfile            # g++ / python3 / JDK runtime image
+│   ├── src/
+│   │   ├── controllers/      # Auth, Room, AI, and Execution logic
+│   │   ├── middlewares/      # JWT Auth and Rate Limiting
+│   │   ├── models/           # User and Room MongoDB Schemas
+│   │   ├── routes/           # Express API Routes
+│   │   └── services/         # Execution (Docker/JDoodle) & Gemini services
+│   └── execution-image/      # Dockerfile for sandboxes
 ├── frontend/
 │   ├── src/
-│   │   ├── App.jsx
-│   │   ├── App.css
-│   │   └── main.jsx
+│   │   ├── components/       # UI Components (Navbar, etc)
+│   │   ├── context/          # Auth Context
+│   │   ├── pages/            # Landing, Login, Register, Dashboard, Workspace
+│   │   └── index.css         # Global styles and grid patterns
 │   └── package.json
 ├── .env.example
 ├── package.json
@@ -176,9 +181,6 @@ npm run dev                 # opens on :5173
 # 📈 Future Improvements
 
 - AI review scoring and severity levels
-- Persistent rooms with database support (Redis/Mongo)
-- User authentication
-- Version history
 - Collaborative cursors
 - Automated tests + CI
 - File explorer supporting multiple source files

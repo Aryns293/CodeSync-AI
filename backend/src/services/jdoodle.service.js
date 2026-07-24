@@ -1,9 +1,10 @@
 import axios from "axios";
 
-// Free tier: 200 executions per day
-// Get credentials from: https://www.jdoodle.com/compiler-api/
-const JDOODLE_CLIENT_ID = process.env.JDOODLE_CLIENT_ID;
-const JDOODLE_CLIENT_SECRET = process.env.JDOODLE_CLIENT_SECRET;
+// Get credentials dynamically to ensure dotenv is loaded
+export function jdoodleIsConfigured() {
+  return Boolean(process.env.JDOODLE_CLIENT_ID && process.env.JDOODLE_CLIENT_SECRET);
+}
+
 const JDOODLE_URL = "https://api.jdoodle.com/v1/execute";
 
 // JDoodle language codes and version index
@@ -12,10 +13,6 @@ const jdoodleLanguages = {
   python3: { language: "python3", versionIndex: "3" }, // Python 3.9.9
   java: { language: "java", versionIndex: "4" },       // JDK 17.0.1
 };
-
-export function jdoodleIsConfigured() {
-  return Boolean(JDOODLE_CLIENT_ID && JDOODLE_CLIENT_SECRET);
-}
 
 export async function executeWithJDoodle({ language, code, stdin }) {
   const langConfig = jdoodleLanguages[language];
@@ -27,8 +24,8 @@ export async function executeWithJDoodle({ language, code, stdin }) {
     const { data } = await axios.post(
       JDOODLE_URL,
       {
-        clientId: JDOODLE_CLIENT_ID,
-        clientSecret: JDOODLE_CLIENT_SECRET,
+        clientId: process.env.JDOODLE_CLIENT_ID,
+        clientSecret: process.env.JDOODLE_CLIENT_SECRET,
         script: code,
         language: langConfig.language,
         versionIndex: langConfig.versionIndex,
