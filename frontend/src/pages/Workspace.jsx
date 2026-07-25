@@ -57,7 +57,7 @@ export default function Workspace() {
         socket.on('languageUpdate', (newLang) => setLanguage(newLang));
         
         socket.on('userTyping', ({ userName, userId }) => {
-            setTypingUsers(prev => ({ ...prev, [userId]: true }));
+            setTypingUsers(prev => ({ ...prev, [userId]: userName }));
             
             if (typingTimeoutsRef.current[userId]) {
                 clearTimeout(typingTimeoutsRef.current[userId]);
@@ -239,7 +239,12 @@ export default function Workspace() {
                                     exit={{ opacity: 0 }}
                                     className="text-xs text-indigo-400"
                                 >
-                                    Someone is typing...
+                                    {(() => {
+                                        const names = Object.values(typingUsers);
+                                        if (names.length === 1) return `${names[0]} is typing...`;
+                                        if (names.length === 2) return `${names[0]} and ${names[1]} are typing...`;
+                                        return `${names.length} people are typing...`;
+                                    })()}
                                 </motion.span>
                             )}
                         </AnimatePresence>
