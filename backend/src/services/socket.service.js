@@ -32,23 +32,25 @@ export const setupSocketHandlers = (io) => {
         let currentRoom = null;
         let currentUser = null;
 
-        socket.on("join", async ({ roomId, userName }) => {
+        socket.on("join", async ({ roomId, user }) => {
             if (currentRoom) {
                 socket.leave(currentRoom);
-                rooms.get(currentRoom)?.delete(currentUser);
-                io.to(currentRoom).emit("userJoined", Array.from(rooms.get(currentRoom) || []));
+                rooms.get(currentRoom)?.delete(socket.id);
+                const usersInRoom = Array.from(new Map(Array.from(rooms.get(currentRoom)?.values() || []).map(u => [u.id, u])).values());
+                io.to(currentRoom).emit("userJoined", usersInRoom);
             }
 
             currentRoom = roomId;
-            currentUser = userName;
+            currentUser = user;
 
             socket.join(roomId);
 
             if (!rooms.has(roomId)) {
-                rooms.set(roomId, new Set());
+                rooms.set(roomId, new Map());
             }
-            rooms.get(roomId).add(userName);
-            io.to(roomId).emit("userJoined", Array.from(rooms.get(roomId)));
+            rooms.get(roomId).set(socket.id, user);
+            const usersInRoom = Array.from(new Map(Array.from(rooms.get(roomId).values()).map(u => [u.id, u])).values());
+            io.to(roomId).emit("userJoined", usersInRoom);
 
             // Fetch from DB if not in memory
             let roomInfo = roomData.get(roomId);
@@ -75,8 +77,9 @@ export const setupSocketHandlers = (io) => {
 
         socket.on("leaveRoom", () => {
              if(currentRoom && currentUser){
-                rooms.get(currentRoom)?.delete(currentUser);
-                io.to(currentRoom).emit("userJoined", Array.from(rooms.get(currentRoom) || []));
+                rooms.get(currentRoom)?.delete(socket.id);
+                const usersInRoom = Array.from(new Map(Array.from(rooms.get(currentRoom)?.values() || []).map(u => [u.id, u])).values());
+                io.to(currentRoom).emit("userJoined", usersInRoom);
                 socket.leave(currentRoom);
                 currentRoom = null;
                 currentUser = null;
@@ -126,8 +129,9 @@ export const setupSocketHandlers = (io) => {
 
         socket.on("disconnect" , () => {
             if(currentRoom && currentUser){
-                rooms.get(currentRoom)?.delete(currentUser);
-                io.to(currentRoom).emit("userJoined", Array.from(rooms.get(currentRoom) || []));
+                rooms.get(currentRoom)?.delete(socket.id);
+                const usersInRoom = Array.from(new Map(Array.from(rooms.get(currentRoom)?.values() || []).map(u => [u.id, u])).values());
+                io.to(currentRoom).emit("userJoined", usersInRoom);
             }
             lastAction.delete(socket.id);
             console.log('A user disconnected');

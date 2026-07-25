@@ -39,7 +39,7 @@ export default function Workspace() {
         }
 
         socket.connect();
-        socket.emit('join', { roomId, userName: user.name });
+        socket.emit('join', { roomId, user: { id: user.id, name: user.name, email: user.email } });
 
         socket.on('connect', () => setConnected(true));
         
@@ -136,10 +136,10 @@ export default function Workspace() {
                         {users.map((u, idx) => (
                             <div key={idx} className="flex items-center gap-3">
                                 <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-pink-500 flex items-center justify-center text-white font-semibold shadow-lg">
-                                    {u.charAt(0).toUpperCase()}
+                                    {u.name ? u.name.charAt(0).toUpperCase() : '?'}
                                 </div>
-                                <span className={clsx("text-sm", u === user.name ? "text-white font-medium" : "text-gray-300")}>
-                                    {u} {u === user.name && "(You)"}
+                                <span className={clsx("text-sm", u.id === user.id ? "text-white font-medium" : "text-gray-300")}>
+                                    {u.name} {u.id === user.id && "(You)"}
                                 </span>
                             </div>
                         ))}

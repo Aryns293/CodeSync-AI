@@ -95,3 +95,27 @@ export const logout = async (req, res, next) => {
         next(error);
     }
 };
+
+export const updateProfile = async (req, res, next) => {
+    try {
+        const { name, password } = req.body;
+        const user = await User.findById(req.user.id);
+        
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        if (name) user.name = name;
+        if (password) user.password = password; // Will be hashed by pre-save hook
+
+        await user.save();
+
+        res.status(200).json({
+            success: true,
+            user: { id: user._id, name: user.name, email: user.email },
+            message: 'Profile updated successfully'
+        });
+    } catch (error) {
+        next(error);
+    }
+};

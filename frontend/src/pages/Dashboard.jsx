@@ -1,17 +1,24 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { motion } from 'framer-motion';
-import { Plus, LogIn, Code2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Plus, LogIn, Settings, X, Loader2 } from 'lucide-react';
 import api from '../utils/api';
 import Navbar from '../components/Navbar';
 
 export default function Dashboard() {
-    const { user } = useAuth();
+    const { user, updateProfile } = useAuth();
     const navigate = useNavigate();
     const [joinId, setJoinId] = useState('');
     const [error, setError] = useState('');
     const [isCreating, setIsCreating] = useState(false);
+
+    const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+    const [profileName, setProfileName] = useState(user?.name || '');
+    const [profilePassword, setProfilePassword] = useState('');
+    const [profileError, setProfileError] = useState('');
+    const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
+    const [profileSuccess, setProfileSuccess] = useState('');
 
     const handleCreateRoom = async () => {
         setError('');
@@ -42,6 +49,27 @@ export default function Dashboard() {
             }
         } catch (err) {
             setError(err.response?.data?.message || 'Room not found');
+        }
+    };
+
+    const handleUpdateProfile = async (e) => {
+        e.preventDefault();
+        setProfileError('');
+        setProfileSuccess('');
+        setIsUpdatingProfile(true);
+
+        try {
+            await updateProfile(profileName, profilePassword || undefined);
+            setProfileSuccess('Profile updated successfully!');
+            setProfilePassword('');
+            setTimeout(() => {
+                setIsProfileModalOpen(false);
+                setProfileSuccess('');
+            }, 1500);
+        } catch (err) {
+            setProfileError(err.response?.data?.message || 'Failed to update profile');
+        } finally {
+            setIsUpdatingProfile(false);
         }
     };
 
@@ -103,6 +131,79 @@ export default function Dashboard() {
                     {error && <p className="text-red-400 text-sm mt-3">{error}</p>}
                 </motion.div>
             </main>
+
+            {/* Profile Settings Button */}
+            <div className="fixed bottom-8 right-8 z-20">
+                <button
+                    onClick={() => setIsProfileModalOpen(true)}
+                    className="p-4 bg-[#151A23] border border-[#232B3A] rounded-full text-gray-400 hover:text-white hover:border-indigo-500/50 shadow-lg transition-all glow-border"
+                    title="Update Profile"
+                >
+                    <Settings className="w-6 h-6" />
+                </button>
+            </div>
+
+            {/* Profile Update Modal */}
+            <AnimatePresence>
+                {isProfileModalOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <motion.div 
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                            onClick={() => setIsProfileModalOpen(false)}
+                        />
+                        <motion.div 
+                            initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                            className="relative w-full max-w-md bg-[#151A23] border border-[#232B3A] rounded-2xl shadow-2xl p-6"
+                        >
+                            <div className="flex items-center justify-between mb-6">
+                                <h3 className="text-xl font-bold text-white">Update Profile</h3>
+                                <button onClick={() => setIsProfileModalOpen(false)} className="text-gray-400 hover:text-white">
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+                            
+                            <form onSubmit={handleUpdateProfile} className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-400 mb-1">Name</label>
+                                    <input 
+                                        type="text" 
+                                        value={profileName}
+                                        onChange={(e) => setProfileName(e.target.value)}
+                                        className="w-full bg-[#0B0E14] border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-400 mb-1">New Password (optional)</label>
+                                    <input 
+                                        type="password" 
+                                        placeholder="Leave blank to keep current"
+                                        value={profilePassword}
+                                        onChange={(e) => setProfilePassword(e.target.value)}
+                                        className="w-full bg-[#0B0E14] border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors"
+                                    />
+                                </div>
+
+                                {profileError && <p className="text-red-400 text-sm">{profileError}</p>}
+                                {profileSuccess && <p className="text-green-400 text-sm">{profileSuccess}</p>}
+
+                                <button 
+                                    type="submit"
+                                    disabled={isUpdatingProfile}
+                                    className="w-full bg-gradient-to-r from-indigo-500 to-purple-500 hover:opacity-90 text-white font-semibold py-3 rounded-lg transition-all disabled:opacity-50 mt-4 flex justify-center items-center gap-2 glow-border"
+                                >
+                                    {isUpdatingProfile && <Loader2 className="w-4 h-4 animate-spin" />}
+                                    Save Changes
+                                </button>
+                            </form>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }
