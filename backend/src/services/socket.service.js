@@ -86,8 +86,12 @@ export const setupSocketHandlers = (io) => {
             }
         });
 
-        socket.on("typing", (roomId, userName) => {
-            socket.to(roomId).emit("userTyping", userName);
+        socket.on("typing", ({ roomId, userName, userId }) => {
+            socket.to(roomId).emit("userTyping", { userName, userId });
+        });
+
+        socket.on("cursorChange", ({ roomId, userId, userName, position }) => {
+            socket.to(roomId).emit("cursorUpdate", { userId, userName, position });
         });
 
         socket.on("languageChange", ({ roomId, language }) => {

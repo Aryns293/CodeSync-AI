@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import Editor from '@monaco-editor/react';
@@ -22,7 +22,14 @@ export default function Workspace() {
     const [output, setOutput] = useState('');
     const [stdin, setStdin] = useState('');
     const [users, setUsers] = useState([]);
-    const [typing, setTyping] = useState('');
+    const [typingUsers, setTypingUsers] = useState({});
+    
+    // Editor refs
+    const editorRef = useRef(null);
+    const monacoRef = useRef(null);
+    const decorationsRef = useRef([]);
+    const remoteCursorsRef = useRef({});
+    const typingTimeoutsRef = useRef({});
     const [copySuccess, setCopySuccess] = useState(false);
     
     // UI State
@@ -49,9 +56,26 @@ export default function Workspace() {
         
         socket.on('languageUpdate', (newLang) => setLanguage(newLang));
         
-        socket.on('userTyping', (userName) => {
-            setTyping(`${userName} is typing...`);
-            setTimeout(() => setTyping(''), 2000);
+        socket.on('userTyping', ({ userName, userId }) => {
+            setTypingUsers(prev => ({ ...prev, [userId]: true }));
+            
+            if (typingTimeoutsRef.current[userId]) {
+                clearTimeout(typingTimeoutsRef.current[userId]);
+            }
+            
+            typingTimeoutsRef.current[userId] = setTimeout(() => {
+                setTypingUsers(prev => {
+                    const next = { ...prev };
+                    delete next[userId];
+                    return next;
+                });
+            }, 2000);
+        });
+
+        socket.on('cursorUpdate', ({ userId, userName, position }) => {
+            if (userId === user.id) return;
+            remoteCursorsRef.current[userId] = { position, userName };
+            updateDecorations();
         });
 
         socket.on('codeResponse', (response) => {
@@ -71,10 +95,33 @@ export default function Workspace() {
         };
     }, [roomId, user, navigate]);
 
+    const updateDecorations = () => {
+        if (!editorRef.current || !monacoRef.current) return;
+        
+        const newDecorations = Object.values(remoteCursorsRef.current).map(({ position, userName }) => ({
+            range: new monacoRef.current.Range(position.lineNumber, position.column, position.lineNumber, position.column),
+            options: {
+                className: 'remote-cursor',
+                hoverMessage: { value: `**${userName}** is here` }
+            }
+        }));
+        
+        decorationsRef.current = editorRef.current.deltaDecorations(decorationsRef.current, newDecorations);
+    };
+
+    const handleEditorMount = (editor, monaco) => {
+        editorRef.current = editor;
+        monacoRef.current = monaco;
+        
+        editor.onDidChangeCursorPosition((e) => {
+            socket.emit('cursorChange', { roomId, userId: user.id, userName: user.name, position: e.position });
+        });
+    };
+
     const handleCodeChange = (newCode) => {
         setCode(newCode);
         socket.emit('codeChange', { roomId, code: newCode });
-        socket.emit('typing', roomId, user?.name);
+        socket.emit('typing', { roomId, userName: user.name, userId: user.id });
     };
 
     const handleLanguageChange = (e) => {
@@ -133,16 +180,22 @@ export default function Workspace() {
                         Collaborators ({users.length})
                     </div>
                     <div className="space-y-3">
-                        {users.map((u, idx) => (
-                            <div key={idx} className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-pink-500 flex items-center justify-center text-white font-semibold shadow-lg">
-                                    {u.name ? u.name.charAt(0).toUpperCase() : '?'}
+                        {users.map((u, idx) => {
+                            const isTyping = typingUsers[u.id];
+                            return (
+                                <div key={idx} className={clsx("flex items-center gap-3 p-2 rounded-lg transition-all", isTyping ? "glow-typing" : "")}>
+                                    <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-pink-500 flex items-center justify-center text-white font-semibold shadow-lg">
+                                        {u.name ? u.name.charAt(0).toUpperCase() : '?'}
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <span className={clsx("text-sm", u.id === user.id ? "text-white font-medium" : "text-gray-300")}>
+                                            {u.name} {u.id === user.id && "(You)"}
+                                        </span>
+                                        {isTyping && <span className="text-xs text-purple-400">typing...</span>}
+                                    </div>
                                 </div>
-                                <span className={clsx("text-sm", u.id === user.id ? "text-white font-medium" : "text-gray-300")}>
-                                    {u.name} {u.id === user.id && "(You)"}
-                                </span>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 </div>
 
@@ -179,14 +232,14 @@ export default function Workspace() {
                             <option value="java">Java (JDK 13)</option>
                         </select>
                         <AnimatePresence>
-                            {typing && (
+                            {Object.keys(typingUsers).length > 0 && (
                                 <motion.span 
                                     initial={{ opacity: 0, x: -10 }}
                                     animate={{ opacity: 1, x: 0 }}
                                     exit={{ opacity: 0 }}
                                     className="text-xs text-indigo-400"
                                 >
-                                    {typing}
+                                    Someone is typing...
                                 </motion.span>
                             )}
                         </AnimatePresence>
@@ -211,6 +264,7 @@ export default function Workspace() {
                             theme="vs-dark"
                             value={code}
                             onChange={handleCodeChange}
+                            onMount={handleEditorMount}
                             options={{
                                 minimap: { enabled: false },
                                 fontSize: 15,
