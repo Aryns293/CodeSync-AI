@@ -62,15 +62,23 @@ export const setupSocketHandlers = (io) => {
                 }
             }
 
-            if (roomInfo?.code) socket.emit("codeUpdate", roomInfo.code);
+            if (roomInfo?.code) {
+                socket.emit("codeUpdate", { 
+                    code: roomInfo.code,
+                    lastModifiedBy: roomInfo.lastModifiedBy,
+                    lastModifiedAt: roomInfo.lastModifiedAt
+                });
+            }
             if (roomInfo?.language) socket.emit("languageUpdate", roomInfo.language);
         });
 
-        socket.on("codeChange", async ({ roomId, code }) => {
-            socket.to(roomId).emit("codeUpdate", code);
+        socket.on("codeChange", async ({ roomId, code, userName, timestamp }) => {
+            socket.to(roomId).emit("codeUpdate", { code, lastModifiedBy: userName, lastModifiedAt: timestamp });
             
             if (!roomData.has(roomId)) roomData.set(roomId, {});
             roomData.get(roomId).code = code;
+            roomData.get(roomId).lastModifiedBy = userName;
+            roomData.get(roomId).lastModifiedAt = timestamp;
 
             // Debounced save to DB can be added here
         });

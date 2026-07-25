@@ -23,6 +23,7 @@ export default function Workspace() {
     const [stdin, setStdin] = useState('');
     const [users, setUsers] = useState([]);
     const [typingUsers, setTypingUsers] = useState({});
+    const [lastModified, setLastModified] = useState({ by: null, at: null });
     
     // Editor refs
     const editorRef = useRef(null);
@@ -52,7 +53,16 @@ export default function Workspace() {
         
         socket.on('userJoined', (usersList) => setUsers(usersList));
         
-        socket.on('codeUpdate', (newCode) => setCode(newCode));
+        socket.on('codeUpdate', (data) => {
+            if (typeof data === 'string') {
+                setCode(data);
+            } else {
+                setCode(data.code);
+                if (data.lastModifiedBy && data.lastModifiedAt) {
+                    setLastModified({ by: data.lastModifiedBy, at: data.lastModifiedAt });
+                }
+            }
+        });
         
         socket.on('languageUpdate', (newLang) => setLanguage(newLang));
         
@@ -120,7 +130,9 @@ export default function Workspace() {
 
     const handleCodeChange = (newCode) => {
         setCode(newCode);
-        socket.emit('codeChange', { roomId, code: newCode });
+        const timestamp = new Date().toISOString();
+        setLastModified({ by: user.name, at: timestamp });
+        socket.emit('codeChange', { roomId, code: newCode, userName: user.name, timestamp });
         socket.emit('typing', { roomId, userName: user.name, userId: user.id });
     };
 
@@ -250,14 +262,29 @@ export default function Workspace() {
                         </AnimatePresence>
                     </div>
                     
-                    <button 
-                        onClick={executeCode}
-                        disabled={isExecuting}
-                        className="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-5 py-1.5 rounded-lg text-sm font-medium transition-colors shadow-lg shadow-green-500/20 disabled:opacity-50"
-                    >
-                        {isExecuting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4 fill-current" />}
-                        Run Code
-                    </button>
+                    <div className="flex items-center gap-4">
+                        {lastModified.by && (
+                            <motion.div 
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                className="hidden md:flex items-center gap-2 text-xs text-gray-400 bg-[#151A23]/50 px-3 py-1.5 rounded-full border border-white/5 backdrop-blur-sm"
+                            >
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                <span>Modified by <span className="text-gray-200 font-medium">{lastModified.by === user.name ? 'You' : lastModified.by}</span></span>
+                                <span className="text-gray-500 text-[10px] uppercase tracking-wider ml-1">
+                                    {new Date(lastModified.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                            </motion.div>
+                        )}
+                        <button 
+                            onClick={executeCode}
+                            disabled={isExecuting}
+                            className="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-5 py-1.5 rounded-lg text-sm font-medium transition-colors shadow-lg shadow-green-500/20 disabled:opacity-50"
+                        >
+                            {isExecuting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4 fill-current" />}
+                            Run Code
+                        </button>
+                    </div>
                 </header>
 
                 {/* Editor Area */}
