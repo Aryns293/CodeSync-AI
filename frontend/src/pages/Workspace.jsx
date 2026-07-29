@@ -39,6 +39,7 @@ export default function Workspace() {
     const [reviewModalOpen, setReviewModalOpen] = useState(false);
     const [reviewMessage, setReviewMessage] = useState('');
     const [leaveModalOpen, setLeaveModalOpen] = useState(false);
+    const [logoutModalOpen, setLogoutModalOpen] = useState(false);
 
     useEffect(() => {
         if (!user) {
@@ -166,6 +167,7 @@ export default function Workspace() {
     };
 
     const handleLogout = async () => {
+        setLogoutModalOpen(false);
         await logout();
         navigate('/login');
     };
@@ -232,7 +234,7 @@ export default function Workspace() {
                         Leave Room
                     </button>
                     
-                    <button onClick={handleLogout} className="w-full flex items-center gap-2 text-gray-400 hover:text-red-400 transition-colors text-sm px-2">
+                    <button onClick={() => setLogoutModalOpen(true)} className="w-full flex items-center gap-2 text-gray-400 hover:text-red-400 transition-colors text-sm px-2">
                         <LogOut className="w-4 h-4" />
                         Logout
                     </button>
@@ -427,6 +429,51 @@ export default function Workspace() {
                                     className="px-4 py-2 text-sm font-medium bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors shadow-lg shadow-red-500/20"
                                 >
                                     Leave Room
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* Logout Modal */}
+            <AnimatePresence>
+                {logoutModalOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+                        <motion.div 
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                            onClick={() => setLogoutModalOpen(false)}
+                        />
+                        <motion.div 
+                            initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                            className="relative w-full max-w-md bg-[#151A23] border border-[#232B3A] rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+                        >
+                            <div className="flex items-center gap-4 p-6 border-b border-[#232B3A]">
+                                <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center text-red-400 shrink-0">
+                                    <LogOut className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-bold text-white">Logout?</h3>
+                                    <p className="text-sm text-gray-400 mt-1">Are you sure you want to log out of your account?</p>
+                                </div>
+                            </div>
+                            <div className="p-6 bg-[#0B0E14] flex justify-end gap-3">
+                                <button 
+                                    onClick={() => setLogoutModalOpen(false)}
+                                    className="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button 
+                                    onClick={handleLogout}
+                                    className="px-4 py-2 text-sm font-medium bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors shadow-lg shadow-red-500/20"
+                                >
+                                    Logout
                                 </button>
                             </div>
                         </motion.div>
