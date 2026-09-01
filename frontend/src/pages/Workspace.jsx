@@ -4,7 +4,7 @@ import { io } from 'socket.io-client';
 import Editor from '@monaco-editor/react';
 import Markdown from 'react-markdown';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, Copy, Check, Users, Sparkles, LogOut, Loader2, Maximize2, Terminal, DoorOpen, AlertTriangle, Menu, X } from 'lucide-react';
+import { Play, Copy, Check, Users, Sparkles, LogOut, Loader2, Maximize2, Minimize2, Terminal, DoorOpen, AlertTriangle, Menu, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import clsx from 'clsx';
 
@@ -41,6 +41,7 @@ export default function Workspace() {
     const [leaveModalOpen, setLeaveModalOpen] = useState(false);
     const [logoutModalOpen, setLogoutModalOpen] = useState(false);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const [isFocusMode, setIsFocusMode] = useState(false);
 
     useEffect(() => {
         if (!user) {
@@ -108,10 +109,26 @@ export default function Workspace() {
         };
     }, [roomId, user, navigate]);
 
+    useEffect(() => {
+        updateDecorations();
+    }, [isFocusMode]);
+
     const updateDecorations = () => {
         if (!editorRef.current || !monacoRef.current) return;
         
-        const newDecorations = Object.values(remoteCursorsRef.current).map(({ position, userName }) => ({
+        let newDecorations = [];
+        if (!isFocusMode) {
+            newDecorations = Object.values(remoteCursorsRef.current).map(({ position, userName }) => ({
+                range: new monacoRef.current.Range(position.lineNumber, position.column, position.lineNumber, position.column),
+                options: {
+                    className: 'remote-cursor',
+                    hoverMessage: { value: `**${userName}** is here` }
+                }
+            }));
+        }
+        
+        decorationsRef.current = editorRef.current.deltaDecorations(decorationsRef.current, newDecorations);
+    };
             range: new monacoRef.current.Range(position.lineNumber, position.column, position.lineNumber, position.column),
             options: {
                 className: 'remote-cursor',
@@ -187,8 +204,9 @@ export default function Workspace() {
             
             {/* Sidebar */}
             <aside className={clsx(
-                "fixed md:relative w-64 h-full bg-[#151A23] border-r border-[#232B3A] flex flex-col z-50 shadow-2xl transition-transform duration-300 ease-in-out",
-                isSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+                "fixed md:relative h-full bg-[#151A23] border-r border-[#232B3A] flex flex-col z-50 shadow-2xl transition-all duration-300 ease-in-out",
+                isSidebarOpen ? "translate-x-0 w-64" : "-translate-x-full md:translate-x-0 w-64",
+                isFocusMode ? "md:hidden" : "md:flex"
             )}>
                 <div className="p-5 border-b border-[#232B3A]">
                     <div className="flex items-center justify-between mb-4">
@@ -271,6 +289,13 @@ export default function Workspace() {
                             onClick={() => setIsSidebarOpen(true)}
                         >
                             <Menu className="w-5 h-5" />
+                        </button>
+                        <button 
+                            className="hidden md:block p-1.5 text-gray-400 hover:text-white transition-colors rounded-md hover:bg-white/5"
+                            onClick={() => setIsFocusMode(!isFocusMode)}
+                            title={isFocusMode ? "Exit Focus Mode" : "Enter Focus Mode"}
+                        >
+                            {isFocusMode ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
                         </button>
                         <select
                             value={language}
