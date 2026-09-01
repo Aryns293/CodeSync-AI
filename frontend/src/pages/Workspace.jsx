@@ -290,13 +290,6 @@ export default function Workspace() {
                         >
                             <Menu className="w-5 h-5" />
                         </button>
-                        <button 
-                            className="hidden md:block p-1.5 text-gray-400 hover:text-white transition-colors rounded-md hover:bg-white/5"
-                            onClick={() => setIsFocusMode(!isFocusMode)}
-                            title={isFocusMode ? "Exit Focus Mode" : "Enter Focus Mode"}
-                        >
-                            {isFocusMode ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
-                        </button>
                         <select
                             value={language}
                             onChange={handleLanguageChange}
@@ -340,6 +333,13 @@ export default function Workspace() {
                                 </span>
                             </motion.div>
                         )}
+                        <button 
+                            className="hidden md:block p-1.5 text-gray-400 hover:text-white transition-colors rounded-md hover:bg-white/5"
+                            onClick={() => setIsFocusMode(!isFocusMode)}
+                            title={isFocusMode ? "Exit Focus Mode" : "Enter Focus Mode"}
+                        >
+                            {isFocusMode ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
+                        </button>
                         <button 
                             onClick={executeCode}
                             disabled={isExecuting}
