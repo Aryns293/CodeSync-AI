@@ -4,7 +4,7 @@ import { io } from 'socket.io-client';
 import Editor from '@monaco-editor/react';
 import Markdown from 'react-markdown';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, Copy, Check, Users, Sparkles, LogOut, Loader2, Maximize2, Terminal, DoorOpen, AlertTriangle } from 'lucide-react';
+import { Play, Copy, Check, Users, Sparkles, LogOut, Loader2, Maximize2, Terminal, DoorOpen, AlertTriangle, Menu, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import clsx from 'clsx';
 
@@ -40,6 +40,7 @@ export default function Workspace() {
     const [reviewMessage, setReviewMessage] = useState('');
     const [leaveModalOpen, setLeaveModalOpen] = useState(false);
     const [logoutModalOpen, setLogoutModalOpen] = useState(false);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     useEffect(() => {
         if (!user) {
@@ -176,12 +177,31 @@ export default function Workspace() {
 
     return (
         <div className="flex h-screen bg-[#0B0E14] text-gray-200 overflow-hidden font-sans">
+            {/* Mobile Sidebar Overlay */}
+            {isSidebarOpen && (
+                <div 
+                    className="fixed inset-0 bg-black/50 z-40 md:hidden backdrop-blur-sm"
+                    onClick={() => setIsSidebarOpen(false)}
+                />
+            )}
+            
             {/* Sidebar */}
-            <aside className="w-64 bg-[#151A23] border-r border-[#232B3A] flex flex-col z-10 shadow-2xl">
+            <aside className={clsx(
+                "fixed md:relative w-64 h-full bg-[#151A23] border-r border-[#232B3A] flex flex-col z-50 shadow-2xl transition-transform duration-300 ease-in-out",
+                isSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+            )}>
                 <div className="p-5 border-b border-[#232B3A]">
-                    <div className="flex items-center gap-2 text-indigo-400 font-bold text-xl mb-4">
-                        <Terminal className="w-6 h-6" />
-                        CodeSync
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2 text-indigo-400 font-bold text-xl">
+                            <Terminal className="w-6 h-6" />
+                            CodeSync
+                        </div>
+                        <button 
+                            className="md:hidden text-gray-400 hover:text-white transition-colors"
+                            onClick={() => setIsSidebarOpen(false)}
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
                     </div>
                     <div className="bg-[#0B0E14] rounded-lg p-3 border border-[#232B3A]">
                         <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Room ID</p>
@@ -242,10 +262,16 @@ export default function Workspace() {
             </aside>
 
             {/* Main Content */}
-            <main className="flex-1 flex flex-col relative">
+            <main className="flex-1 flex flex-col relative w-full md:w-auto overflow-hidden">
                 {/* Header */}
-                <header className="h-14 border-b border-[#232B3A] flex items-center justify-between px-6 bg-[#0B0E14]/80 backdrop-blur-md">
-                    <div className="flex items-center gap-4">
+                <header className="h-14 border-b border-[#232B3A] flex items-center justify-between px-3 md:px-6 bg-[#0B0E14]/80 backdrop-blur-md shrink-0">
+                    <div className="flex items-center gap-2 md:gap-4">
+                        <button 
+                            className="md:hidden p-1.5 text-gray-400 hover:text-white transition-colors rounded-md hover:bg-white/5"
+                            onClick={() => setIsSidebarOpen(true)}
+                        >
+                            <Menu className="w-5 h-5" />
+                        </button>
                         <select
                             value={language}
                             onChange={handleLanguageChange}
@@ -292,10 +318,11 @@ export default function Workspace() {
                         <button 
                             onClick={executeCode}
                             disabled={isExecuting}
-                            className="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-5 py-1.5 rounded-lg text-sm font-medium transition-colors shadow-lg shadow-green-500/20 disabled:opacity-50"
+                            className="flex items-center gap-1.5 md:gap-2 bg-green-500 hover:bg-green-600 text-white px-3 md:px-5 py-1.5 rounded-lg text-sm font-medium transition-colors shadow-lg shadow-green-500/20 disabled:opacity-50"
                         >
                             {isExecuting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4 fill-current" />}
-                            Run Code
+                            <span className="hidden sm:inline">Run Code</span>
+                            <span className="sm:hidden">Run</span>
                         </button>
                     </div>
                 </header>
@@ -328,8 +355,8 @@ export default function Workspace() {
                     </div>
 
                     {/* Bottom Console */}
-                    <div className="h-64 border-t border-[#232B3A] flex bg-[#0B0E14]">
-                        <div className="flex-1 flex flex-col border-r border-[#232B3A]">
+                    <div className="h-auto md:h-64 border-t border-[#232B3A] flex flex-col md:flex-row bg-[#0B0E14]">
+                        <div className="flex-1 h-32 md:h-auto flex flex-col border-b md:border-b-0 md:border-r border-[#232B3A]">
                             <div className="h-8 bg-[#151A23] border-b border-[#232B3A] flex items-center px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">
                                 Standard Input
                             </div>
@@ -337,14 +364,14 @@ export default function Workspace() {
                                 value={stdin}
                                 onChange={(e) => setStdin(e.target.value)}
                                 placeholder="Enter input here..."
-                                className="flex-1 bg-transparent p-4 text-sm font-mono focus:outline-none resize-none text-gray-300"
+                                className="flex-1 bg-transparent p-3 md:p-4 text-xs md:text-sm font-mono focus:outline-none resize-none text-gray-300 custom-scrollbar"
                             />
                         </div>
-                        <div className="flex-1 flex flex-col relative">
+                        <div className="flex-1 h-40 md:h-auto flex flex-col relative">
                             <div className="h-8 bg-[#151A23] border-b border-[#232B3A] flex items-center px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">
                                 Output Console
                             </div>
-                            <pre className="flex-1 p-4 text-sm font-mono overflow-auto text-gray-300 whitespace-pre-wrap">
+                            <pre className="flex-1 p-3 md:p-4 text-xs md:text-sm font-mono overflow-auto text-gray-300 whitespace-pre-wrap custom-scrollbar">
                                 {output || "Code execution output will appear here..."}
                             </pre>
                             {isExecuting && (
