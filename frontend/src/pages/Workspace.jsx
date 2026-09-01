@@ -451,10 +451,11 @@ export default function Workspace() {
                     </div>
 
                     {/* Bottom Console */}
-                    <div 
-                        className="relative border-t border-[#232B3A] flex flex-col md:flex-row bg-[#0B0E14] shrink-0"
-                        style={{ height: isMobile ? 'auto' : consoleHeight }}
-                    >
+                    {!isFocusMode && (
+                        <div 
+                            className="relative border-t border-[#232B3A] flex flex-col md:flex-row bg-[#0B0E14] shrink-0"
+                            style={{ height: isMobile ? 'auto' : consoleHeight }}
+                        >
                         {/* Horizontal Resizer (Console Height) */}
                         {!isMobile && (
                             <div 
@@ -514,6 +515,7 @@ export default function Workspace() {
                             )}
                         </div>
                     </div>
+                    )}
                 </div>
             </main>
 
