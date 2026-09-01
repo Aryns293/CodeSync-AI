@@ -4,7 +4,7 @@ import { io } from 'socket.io-client';
 import Editor from '@monaco-editor/react';
 import Markdown from 'react-markdown';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, Copy, Check, Users, Sparkles, LogOut, Loader2, Maximize2, Minimize2, Terminal, DoorOpen, AlertTriangle, Menu, X, ChevronDown } from 'lucide-react';
+import { Play, Copy, Check, Users, Sparkles, LogOut, Loader2, Maximize2, Minimize2, Terminal, DoorOpen, AlertTriangle, Menu, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import clsx from 'clsx';
 
@@ -49,6 +49,7 @@ export default function Workspace() {
     const [inputWidth, setInputWidth] = useState(50);
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
     const [isConsoleOpen, setIsConsoleOpen] = useState(true);
+    const [isConsoleMaximized, setIsConsoleMaximized] = useState(false);
 
     useEffect(() => {
         const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -432,8 +433,8 @@ export default function Workspace() {
                 </header>
 
                 {/* Editor Area */}
-                <div className="flex-1 flex flex-col">
-                    <div className="flex-1 relative">
+                <div className={clsx("flex-1 flex flex-col min-h-0", isConsoleMaximized ? "hidden" : "flex")}>
+                    <div className="flex-1 relative min-h-0">
                         <Editor
                             height="100%"
                             language={language === 'python3' ? 'python' : language}
@@ -461,11 +462,14 @@ export default function Workspace() {
                     {/* Bottom Console */}
                     {!isFocusMode && isConsoleOpen && (
                         <div 
-                            className="relative border-t border-[#232B3A] flex flex-col md:flex-row bg-[#0B0E14] shrink-0"
-                            style={{ height: isMobile ? 'auto' : consoleHeight }}
+                            className={clsx(
+                                "relative border-t border-[#232B3A] flex flex-col md:flex-row bg-[#0B0E14] shrink-0 transition-all duration-300",
+                                isConsoleMaximized ? "flex-1" : ""
+                            )}
+                            style={{ height: isConsoleMaximized ? 'auto' : (isMobile ? 'auto' : consoleHeight) }}
                         >
                         {/* Horizontal Resizer (Console Height) */}
-                        {!isMobile && (
+                        {!isMobile && !isConsoleMaximized && (
                             <div 
                                 className="absolute top-0 left-0 w-full h-1.5 cursor-row-resize hover:bg-indigo-500 z-50 flex items-center justify-center group -translate-y-1/2"
                                 onMouseDown={startResizingConsole}
@@ -512,13 +516,25 @@ export default function Workspace() {
                         <div className="flex-1 flex flex-col relative min-w-0 h-40 md:h-auto">
                             <div className="h-8 bg-[#151A23] border-b border-[#232B3A] flex items-center justify-between px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider shrink-0">
                                 <span>Output Console</span>
-                                <button 
-                                    onClick={() => setIsConsoleOpen(false)}
-                                    className="p-1 hover:bg-white/10 rounded transition-colors text-gray-400 hover:text-white"
-                                    title="Minimize Console"
-                                >
-                                    <ChevronDown className="w-4 h-4" />
-                                </button>
+                                <div className="flex items-center gap-1">
+                                    <button 
+                                        onClick={() => setIsConsoleMaximized(!isConsoleMaximized)}
+                                        className="p-1 hover:bg-white/10 rounded transition-colors text-gray-400 hover:text-white"
+                                        title={isConsoleMaximized ? "Restore Console" : "Maximize Console"}
+                                    >
+                                        {isConsoleMaximized ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+                                    </button>
+                                    <button 
+                                        onClick={() => {
+                                            setIsConsoleOpen(false);
+                                            setIsConsoleMaximized(false);
+                                        }}
+                                        className="p-1 hover:bg-white/10 rounded transition-colors text-gray-400 hover:text-white"
+                                        title="Close Console"
+                                    >
+                                        <X className="w-4 h-4" />
+                                    </button>
+                                </div>
                             </div>
                             <pre className="flex-1 p-3 md:p-4 text-xs md:text-sm font-mono overflow-auto text-gray-300 whitespace-pre-wrap custom-scrollbar">
                                 {output || "Code execution output will appear here..."}
