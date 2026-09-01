@@ -129,15 +129,6 @@ export default function Workspace() {
         
         decorationsRef.current = editorRef.current.deltaDecorations(decorationsRef.current, newDecorations);
     };
-            range: new monacoRef.current.Range(position.lineNumber, position.column, position.lineNumber, position.column),
-            options: {
-                className: 'remote-cursor',
-                hoverMessage: { value: `**${userName}** is here` }
-            }
-        }));
-        
-        decorationsRef.current = editorRef.current.deltaDecorations(decorationsRef.current, newDecorations);
-    };
 
     const handleEditorMount = (editor, monaco) => {
         editorRef.current = editor;
