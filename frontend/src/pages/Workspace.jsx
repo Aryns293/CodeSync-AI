@@ -43,6 +43,70 @@ export default function Workspace() {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [isFocusMode, setIsFocusMode] = useState(false);
 
+    // Resizing State
+    const [sidebarWidth, setSidebarWidth] = useState(256);
+    const [consoleHeight, setConsoleHeight] = useState(256);
+    const [inputWidth, setInputWidth] = useState(50);
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+    useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth < 768);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+    const startResizingSidebar = (e) => {
+        e.preventDefault();
+        const handleMouseMove = (moveEvent) => {
+            const newWidth = Math.min(Math.max(200, moveEvent.clientX), 600);
+            setSidebarWidth(newWidth);
+        };
+        const handleMouseUp = () => {
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+            document.body.style.cursor = 'default';
+        };
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+        document.body.style.cursor = 'col-resize';
+    };
+
+    const startResizingConsole = (e) => {
+        e.preventDefault();
+        const handleMouseMove = (moveEvent) => {
+            const newHeight = Math.min(Math.max(100, window.innerHeight - moveEvent.clientY), window.innerHeight - 100);
+            setConsoleHeight(newHeight);
+        };
+        const handleMouseUp = () => {
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+            document.body.style.cursor = 'default';
+        };
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+        document.body.style.cursor = 'row-resize';
+    };
+
+    const startResizingInput = (e) => {
+        e.preventDefault();
+        const sidebarOffset = (!isFocusMode && !isMobile) ? sidebarWidth : 0;
+        const containerWidth = window.innerWidth - sidebarOffset;
+        
+        const handleMouseMove = (moveEvent) => {
+            const relativeX = moveEvent.clientX - sidebarOffset;
+            const newWidthPercent = (relativeX / containerWidth) * 100;
+            setInputWidth(Math.min(Math.max(20, newWidthPercent), 80));
+        };
+        const handleMouseUp = () => {
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+            document.body.style.cursor = 'default';
+        };
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+        document.body.style.cursor = 'col-resize';
+    };
+
     useEffect(() => {
         if (!user) {
             // Need a username, prompt for it if guest? For now, redirect to login
@@ -194,11 +258,14 @@ export default function Workspace() {
             )}
             
             {/* Sidebar */}
-            <aside className={clsx(
-                "fixed md:relative h-full bg-[#151A23] border-r border-[#232B3A] flex flex-col z-50 shadow-2xl transition-all duration-300 ease-in-out",
-                isSidebarOpen ? "translate-x-0 w-64" : "-translate-x-full md:translate-x-0 w-64",
-                isFocusMode ? "md:hidden" : "md:flex"
-            )}>
+            <aside 
+                className={clsx(
+                    "fixed md:relative h-full bg-[#151A23] border-r border-[#232B3A] flex flex-col z-50 shadow-2xl transition-transform duration-300 ease-in-out md:transition-none shrink-0",
+                    isSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
+                    isFocusMode ? "md:hidden" : "md:flex"
+                )}
+                style={{ width: isMobile ? 256 : sidebarWidth }}
+            >
                 <div className="p-5 border-b border-[#232B3A]">
                     <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-2 text-indigo-400 font-bold text-xl">
@@ -268,6 +335,19 @@ export default function Workspace() {
                         Logout
                     </button>
                 </div>
+
+                {/* Sidebar Resizer */}
+                {!isMobile && (
+                    <div 
+                        className="absolute top-0 right-0 w-1.5 h-full cursor-col-resize hover:bg-indigo-500 z-50 flex items-center justify-center group translate-x-1/2"
+                        onMouseDown={startResizingSidebar}
+                    >
+                        <div className="flex gap-[2px] opacity-0 group-hover:opacity-100 transition-opacity bg-[#0B0E14] px-0.5 rounded py-1">
+                            <div className="w-[1px] h-4 bg-gray-400"></div>
+                            <div className="w-[1px] h-4 bg-gray-400"></div>
+                        </div>
+                    </div>
+                )}
             </aside>
 
             {/* Main Content */}
@@ -371,9 +451,31 @@ export default function Workspace() {
                     </div>
 
                     {/* Bottom Console */}
-                    <div className="h-auto md:h-64 border-t border-[#232B3A] flex flex-col md:flex-row bg-[#0B0E14]">
-                        <div className="flex-1 h-32 md:h-auto flex flex-col border-b md:border-b-0 md:border-r border-[#232B3A]">
-                            <div className="h-8 bg-[#151A23] border-b border-[#232B3A] flex items-center px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                    <div 
+                        className="relative border-t border-[#232B3A] flex flex-col md:flex-row bg-[#0B0E14] shrink-0"
+                        style={{ height: isMobile ? 'auto' : consoleHeight }}
+                    >
+                        {/* Horizontal Resizer (Console Height) */}
+                        {!isMobile && (
+                            <div 
+                                className="absolute top-0 left-0 w-full h-1.5 cursor-row-resize hover:bg-indigo-500 z-50 flex items-center justify-center group -translate-y-1/2"
+                                onMouseDown={startResizingConsole}
+                            >
+                                <div className="flex flex-col gap-[2px] opacity-0 group-hover:opacity-100 transition-opacity bg-[#0B0E14] py-0.5 rounded px-1">
+                                    <div className="w-4 h-[1px] bg-gray-400"></div>
+                                    <div className="w-4 h-[1px] bg-gray-400"></div>
+                                </div>
+                            </div>
+                        )}
+
+                        <div 
+                            className="flex flex-col border-b md:border-b-0 md:border-r border-[#232B3A] shrink-0"
+                            style={{ 
+                                width: isMobile ? '100%' : `${inputWidth}%`, 
+                                height: isMobile ? 128 : '100%' 
+                            }}
+                        >
+                            <div className="h-8 bg-[#151A23] border-b border-[#232B3A] flex items-center px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider shrink-0">
                                 Standard Input
                             </div>
                             <textarea
@@ -383,15 +485,30 @@ export default function Workspace() {
                                 className="flex-1 bg-transparent p-3 md:p-4 text-xs md:text-sm font-mono focus:outline-none resize-none text-gray-300 custom-scrollbar"
                             />
                         </div>
-                        <div className="flex-1 h-40 md:h-auto flex flex-col relative">
-                            <div className="h-8 bg-[#151A23] border-b border-[#232B3A] flex items-center px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+
+                        {/* Vertical Resizer (Input/Output Width) */}
+                        {!isMobile && (
+                            <div 
+                                className="absolute top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-indigo-500 z-50 flex items-center justify-center group -translate-x-1/2"
+                                style={{ left: `${inputWidth}%` }}
+                                onMouseDown={startResizingInput}
+                            >
+                                <div className="flex gap-[2px] opacity-0 group-hover:opacity-100 transition-opacity bg-[#0B0E14] px-0.5 rounded py-1">
+                                    <div className="w-[1px] h-4 bg-gray-400"></div>
+                                    <div className="w-[1px] h-4 bg-gray-400"></div>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="flex-1 flex flex-col relative min-w-0 h-40 md:h-auto">
+                            <div className="h-8 bg-[#151A23] border-b border-[#232B3A] flex items-center px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider shrink-0">
                                 Output Console
                             </div>
                             <pre className="flex-1 p-3 md:p-4 text-xs md:text-sm font-mono overflow-auto text-gray-300 whitespace-pre-wrap custom-scrollbar">
                                 {output || "Code execution output will appear here..."}
                             </pre>
                             {isExecuting && (
-                                <div className="absolute inset-0 bg-[#0B0E14]/50 backdrop-blur-sm flex items-center justify-center">
+                                <div className="absolute inset-0 bg-[#0B0E14]/50 backdrop-blur-sm flex items-center justify-center z-10">
                                     <Loader2 className="w-6 h-6 text-indigo-400 animate-spin" />
                                 </div>
                             )}
