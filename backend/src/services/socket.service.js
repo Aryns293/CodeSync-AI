@@ -5,6 +5,35 @@ import { Room } from '../models/Room.model.js';
 const rooms = new Map();
 const roomData = new Map();
 const lastAction = new Map();
+const saveTimeouts = new Map();
+
+function scheduleDbSave(roomId) {
+    if (saveTimeouts.has(roomId)) {
+        clearTimeout(saveTimeouts.get(roomId));
+    }
+    
+    saveTimeouts.set(roomId, setTimeout(async () => {
+        const data = roomData.get(roomId);
+        if (data) {
+            try {
+                await Room.findOneAndUpdate(
+                    { roomId },
+                    { 
+                        $set: {
+                            ...(data.code !== undefined && { code: data.code }),
+                            ...(data.language !== undefined && { language: data.language }),
+                            ...(data.lastModifiedBy !== undefined && { lastModifiedBy: data.lastModifiedBy }),
+                            ...(data.lastModifiedAt !== undefined && { lastModifiedAt: data.lastModifiedAt })
+                        }
+                    },
+                    { upsert: true }
+                );
+            } catch (error) {
+                console.error(`Error saving room ${roomId} to DB:`, error);
+            }
+        }
+    }, 2000));
+}
 
 function detectLang(code) {
     if (code.includes("#include")) return "C++";
@@ -80,7 +109,7 @@ export const setupSocketHandlers = (io) => {
             roomData.get(roomId).lastModifiedBy = userName;
             roomData.get(roomId).lastModifiedAt = timestamp;
 
-            // Debounced save to DB can be added here
+            scheduleDbSave(roomId);
         });
 
         socket.on("leaveRoom", () => {
@@ -106,6 +135,7 @@ export const setupSocketHandlers = (io) => {
             io.to(roomId).emit("languageUpdate", language);
             if (!roomData.has(roomId)) roomData.set(roomId, {});
             roomData.get(roomId).language = language;
+            scheduleDbSave(roomId);
         });
 
         socket.on("compileCode", async ({ code, roomId, language, stdin }) => {

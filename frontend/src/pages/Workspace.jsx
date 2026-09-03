@@ -117,9 +117,11 @@ export default function Workspace() {
         }
 
         socket.connect();
-        socket.emit('join', { roomId, user: { id: user.id, name: user.name, email: user.email } });
 
-        socket.on('connect', () => setConnected(true));
+        socket.on('connect', () => {
+            setConnected(true);
+            socket.emit('join', { roomId, user: { id: user.id, name: user.name, email: user.email } });
+        });
         
         socket.on('userJoined', (usersList) => setUsers(usersList));
         
