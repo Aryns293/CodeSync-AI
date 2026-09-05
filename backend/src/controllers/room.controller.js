@@ -1,12 +1,11 @@
 import { Room } from '../models/Room.model.js';
-import crypto from 'crypto';
 
 export const createRoom = async (req, res, next) => {
     try {
         const roomId = Math.floor(100000 + Math.random() * 900000).toString();
         const room = await Room.create({
             roomId,
-            owner: req.user ? req.user._id : null,
+            owner: req.user._id,
         });
 
         res.status(201).json({ success: true, room });

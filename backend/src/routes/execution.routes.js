@@ -1,6 +1,6 @@
 import express from 'express';
 import { executeCode } from '../controllers/execution.controller.js';
-import { optionalAuth } from '../middlewares/auth.middleware.js';
+import { protect } from '../middlewares/auth.middleware.js';
 import { apiLimiter } from '../middlewares/rateLimiter.middleware.js';
 import { validate } from '../middlewares/validate.middleware.js';
 import { z } from 'zod';
@@ -16,6 +16,6 @@ const executionSchema = z.object({
     })
 });
 
-router.post('/', apiLimiter, optionalAuth, validate(executionSchema), executeCode);
+router.post('/', apiLimiter, protect, validate(executionSchema), executeCode);
 
 export default router;

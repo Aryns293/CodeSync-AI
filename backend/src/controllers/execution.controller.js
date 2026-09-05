@@ -9,7 +9,7 @@ export const executeCode = async (req, res, next) => {
             code,
             stdin,
             roomId: roomId || 'api-execution',
-            userId: req.user ? req.user._id : null
+            userId: req.user._id
         });
 
         res.status(200).json({ success: true, run: result });

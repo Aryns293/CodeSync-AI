@@ -15,7 +15,6 @@ import { setupSocketHandlers } from './src/services/socket.service.js';
 import authRoutes from './src/routes/auth.routes.js';
 import roomRoutes from './src/routes/room.routes.js';
 import executionRoutes from './src/routes/execution.routes.js';
-import aiRoutes from './src/routes/ai.routes.js';
 
 // Middlewares
 import { errorHandler } from './src/middlewares/errorHandler.middleware.js';
@@ -38,7 +37,7 @@ const io = new Server(server, {
 });
 
 // Middleware
-app.use(cors({ origin: true, credentials: true })); // Adjust origin in production
+app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
@@ -50,7 +49,6 @@ setupSocketHandlers(io);
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/room', roomRoutes);
 app.use('/api/v1/execution', executionRoutes);
-app.use('/api/v1/ai', aiRoutes);
 
 // Static frontend build for production
 const ROOT = path.join(import.meta.dirname, "..");
