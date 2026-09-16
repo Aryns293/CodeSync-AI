@@ -467,6 +467,26 @@ export default function Workspace() {
                 {/* Editor Area */}
                 <div className={clsx("flex-1 flex flex-col min-h-0", isConsoleMaximized ? "hidden" : "flex")}>
                     <div className="flex-1 relative min-h-0">
+                        {/* Floating Drive Video at 2x speed */}
+                        <div className="absolute top-4 right-4 z-10 w-72 md:w-80 rounded-xl overflow-hidden shadow-2xl border border-[#232B3A] bg-[#0B0E14]/80 backdrop-blur-md">
+                            <div className="bg-[#151A23] px-3 py-2 text-xs font-semibold text-gray-300 flex justify-between items-center border-b border-[#232B3A]">
+                                <span className="flex items-center gap-2">
+                                    <Play className="w-3 h-3 text-indigo-400" /> Reference Video (2x)
+                                </span>
+                            </div>
+                            <video 
+                                src="https://drive.google.com/uc?export=download&id=1v-hAw5xa8vjwLy-A-GsI5bHGvme3T1If"
+                                autoPlay
+                                loop
+                                muted
+                                controls
+                                className="w-full h-auto object-cover"
+                                ref={(el) => {
+                                    if (el) el.playbackRate = 2.0;
+                                }}
+                            />
+                        </div>
+
                         <Editor
                             height="100%"
                             language={language === 'python3' ? 'python' : language}
