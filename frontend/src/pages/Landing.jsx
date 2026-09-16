@@ -83,7 +83,7 @@ export default function Landing() {
                     </div>
                     <div className="bg-[#151A23] w-full aspect-video overflow-hidden relative">
                         <video
-                            src="https://drive.google.com/uc?export=download&id=1mkh0Mjz02U6bKarQ089P9ol2pl5o7O9A"
+                            src="/CodeSync.mp4"
                             autoPlay
                             loop
                             muted
