@@ -14,7 +14,6 @@ import { setupSocketHandlers } from './src/services/socket.service.js';
 // Routes
 import authRoutes from './src/routes/auth.routes.js';
 import roomRoutes from './src/routes/room.routes.js';
-import executionRoutes from './src/routes/execution.routes.js';
 
 // Middlewares
 import { errorHandler } from './src/middlewares/errorHandler.middleware.js';
@@ -68,7 +67,6 @@ setupSocketHandlers(io);
 // API Routes
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/room', roomRoutes);
-app.use('/api/v1/execution', executionRoutes);
 
 // Static frontend build for production
 const ROOT = path.join(import.meta.dirname, "..");
