@@ -16,14 +16,23 @@ export const generateReview = async (code, language) => {
     }
 
     const prompt = `
-    You're an expert code reviewer of the language "${language}" and love to give code suggestions.
-    Generate a brief review of the code below.
-    Format clearly with headings, and use bullet points.
+You are an expert ${language} code reviewer.
+Review the following code and provide a highly structured Markdown response strictly following this format:
 
-    \`\`\`
-    ${code}
-    \`\`\`
-    `;
+### 🚨 Critical Bugs
+(List any severe bugs, security issues, or logic errors. If none, write "None detected.")
+
+### 💡 Code Improvements & Best Practices
+(List performance optimizations, readability improvements, and language-specific best practices using bullet points.)
+
+### 🛠️ Corrected Code
+(Provide the fully corrected and optimized code block in ${language}.)
+
+**Code to review:**
+\`\`\`${language}
+${code}
+\`\`\`
+`;
 
     const response = await aiInstance.models.generateContent({
         model: "gemini-3.5-flash-lite",
