@@ -18,23 +18,35 @@ import roomRoutes from './src/routes/room.routes.js';
 // Middlewares
 import { errorHandler } from './src/middlewares/errorHandler.middleware.js';
 
-dotenv.config({ path: path.join(import.meta.dirname, '../.env') });
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+dotenv.config({ path: path.join(__dirname, '../.env') });
 
 // ─── Fix #7: CORS allowlist ───────────────────────────────────────────────────
 // Reflect-any-origin + credentials:true is a known security misconfiguration.
 // In production set ALLOWED_ORIGINS="https://yourdomain.com" in your env file.
 const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
     ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim())
-    : ['http://localhost:5173', 'http://localhost:3000'];
+    : null;
 
 const corsOptions = {
     origin: (origin, callback) => {
         // Allow requests with no origin (curl, Postman, same-origin)
-        if (!origin || ALLOWED_ORIGINS.includes(origin)) {
-            callback(null, true);
-        } else {
-            callback(new Error(`CORS: origin ${origin} is not allowed`));
+        if (!origin) return callback(null, true);
+        
+        // If user defined a strict allowlist, enforce it
+        if (ALLOWED_ORIGINS) {
+            if (ALLOWED_ORIGINS.includes(origin)) {
+                return callback(null, true);
+            }
+            return callback(new Error(`CORS: origin ${origin} is not allowed`));
         }
+
+        // Zero-config fallback: reflect the origin (allow all)
+        callback(null, true);
     },
     credentials: true,
 };
@@ -48,8 +60,8 @@ initGemini();
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
-        // Fix #7: Socket.IO must use the same allowlist — '*' defeats credentials:true
-        origin: ALLOWED_ORIGINS,
+        // Use strict allowlist if defined, otherwise reflect origin (true)
+        origin: ALLOWED_ORIGINS || true,
         methods: ['GET', 'POST'],
         credentials: true,
     },
@@ -69,8 +81,9 @@ app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/room', roomRoutes);
 
 // Static frontend build for production
-const ROOT = path.join(import.meta.dirname, "..");
-app.use(express.static(path.join(ROOT, "frontend/dist")));
+const ROOT = path.join(__dirname, "..");
+const frontendDistPath = path.join(ROOT, "frontend/dist");
+app.use(express.static(frontendDistPath));
 
 app.get("*", (_, res) => {
     res.sendFile(path.join(ROOT, "frontend/dist/index.html"));
