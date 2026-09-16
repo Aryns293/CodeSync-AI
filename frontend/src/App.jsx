@@ -28,7 +28,13 @@ const ProtectedRoute = ({ children }) => {
 const PublicRoute = ({ children }) => {
     const { user, loading } = useAuth();
     
-    if (loading) return null;
+    if (loading) {
+        return (
+            <div className="h-screen w-screen flex items-center justify-center bg-[#0B0E14] bg-grid">
+                <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
+            </div>
+        );
+    }
     
     if (user) {
         return <Navigate to="/dashboard" replace />;

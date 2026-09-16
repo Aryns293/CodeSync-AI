@@ -3,8 +3,7 @@ import mongoose from 'mongoose';
 export const connectDB = async () => {
     try {
         if (!process.env.MONGODB_URI) {
-            console.warn("MONGODB_URI is missing, running in memory-only mode without persistence.");
-            return;
+            throw new Error('FATAL: MONGODB_URI environment variable is not set. Server cannot start.');
         }
         
         const conn = await mongoose.connect(process.env.MONGODB_URI);
