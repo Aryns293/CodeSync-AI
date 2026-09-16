@@ -145,6 +145,12 @@ export default function Workspace() {
             } else {
                 setCode(data.code);
                 if (data.lastModifiedBy && data.lastModifiedAt) {
+                    // --- TEMPORARY METRIC CALCULATION ---
+                    const sentTime = new Date(data.lastModifiedAt).getTime();
+                    const receivedTime = Date.now();
+                    console.log(`🔥 Real-world Latency: ${receivedTime - sentTime}ms`);
+                    // ------------------------------------
+                    
                     setLastModified({ by: data.lastModifiedBy, at: data.lastModifiedAt });
                 }
             }
