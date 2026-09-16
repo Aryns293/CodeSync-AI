@@ -232,8 +232,22 @@ export const setupSocketHandlers = (io) => {
                 const text = await generateReview(code, language);
                 io.to(roomId).emit('AIReview', text);
             } catch (error) {
-                console.error('AI Review error:', error.message);
-                io.to(roomId).emit('AIReview', 'Failed to generate AI review. Please make sure GEMINI_API_KEY is configured.');
+                // Log the real error so Render logs show the actual cause
+                console.error('AI Review error [full]:', error.message, error.stack ?? '');
+
+                // Send a specific, non-misleading message to the client
+                let clientMsg;
+                const msg = error.message ?? '';
+                if (msg.includes('not configured') || msg.includes('API key not valid') || msg.includes('API_KEY_INVALID')) {
+                    clientMsg = 'AI review is not configured on this server. Contact the administrator.';
+                } else if (msg.includes('quota') || msg.includes('RESOURCE_EXHAUSTED')) {
+                    clientMsg = 'AI review quota exceeded. Please try again later.';
+                } else if (msg.includes('model') || msg.includes('NOT_FOUND')) {
+                    clientMsg = 'AI review model is unavailable. Contact the administrator.';
+                } else {
+                    clientMsg = 'AI review failed — please try again in a moment.';
+                }
+                io.to(roomId).emit('AIReview', clientMsg);
             }
         });
 
