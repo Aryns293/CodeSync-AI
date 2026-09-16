@@ -7,3 +7,10 @@ dist
 # macOS metadata — should never be committed
 **/.DS_Store
 .DS_Store
+
+# Editor/IDE settings
+.vscode/
+.idea/
+
+# Scratch / debug scripts
+check.cjs

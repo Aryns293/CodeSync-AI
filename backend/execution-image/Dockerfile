@@ -7,6 +7,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     g++ \
     python3 \
     default-jdk-headless \
+    nodejs \
     && rm -rf /var/lib/apt/lists/*
 
 # Never run submitted code as root inside the container.

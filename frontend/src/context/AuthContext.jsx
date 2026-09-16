@@ -8,13 +8,31 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // Here we could add a /me endpoint to check session, but for now we'll just check localStorage
-        // Since we use httpOnly cookies, the token is sent automatically
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) {
-            setUser(JSON.parse(storedUser));
-        }
-        setLoading(false);
+        // Verify the session is still live on the server by calling /refresh.
+        // If the httpOnly refreshToken cookie is valid, the server issues a new
+        // access token and we restore the user from localStorage.
+        // If not (expired, logged out elsewhere), we clear local state.
+        // This eliminates the localStorage-only trust vulnerability — a spoofed
+        // localStorage entry no longer grants access to authenticated routes.
+        const bootstrapSession = async () => {
+            const storedUser = localStorage.getItem('user');
+            if (!storedUser) {
+                setLoading(false);
+                return;
+            }
+            try {
+                await api.post('/auth/refresh');
+                // Refresh succeeded — the server confirmed a valid session.
+                setUser(JSON.parse(storedUser));
+            } catch {
+                // Refresh failed — session is invalid. Clear stale local data.
+                localStorage.removeItem('user');
+                setUser(null);
+            } finally {
+                setLoading(false);
+            }
+        };
+        bootstrapSession();
     }, []);
 
     const login = async (email, password) => {

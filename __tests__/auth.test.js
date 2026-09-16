@@ -52,7 +52,8 @@ function buildTestApp() {
     app.post('/api/v1/auth/register', validate(registerSchema), register);
     app.post('/api/v1/auth/login', validate(loginSchema), login);
     app.post('/api/v1/auth/refresh', refreshAccessToken);
-    app.post('/api/v1/auth/logout', logout);
+    // logout now requires a valid JWT — protect populates req.user for the DB clear
+    app.post('/api/v1/auth/logout', protect, logout);
 
     app.use(errorHandler);
     return app;
@@ -226,19 +227,36 @@ describe('POST /api/v1/auth/refresh', () => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 describe('POST /api/v1/auth/logout', () => {
-    it('clears jwt and refreshToken cookies', async () => {
-        const res = await request(app).post('/api/v1/auth/logout');
+    it('clears jwt and refreshToken cookies when authenticated', async () => {
+        // logout now requires a valid JWT (protect middleware).
+        // Register and login first so we have a real JWT cookie to send.
+        await registerUser({ name: 'Dave', email: 'dave@example.com', password: 'password123' });
+        const loginRes = await request(app)
+            .post('/api/v1/auth/login')
+            .send({ email: 'dave@example.com', password: 'password123' });
+
+        const jwtCookieRaw = extractCookie(loginRes, 'jwt')?.split(';')[0];  // "jwt=ey..."
+        expect(jwtCookieRaw).not.toBeNull();
+
+        const res = await request(app)
+            .post('/api/v1/auth/logout')
+            .set('Cookie', jwtCookieRaw);
 
         expect(res.status).toBe(200);
         expect(res.body.success).toBe(true);
 
         const cookies = res.headers['set-cookie'];
         if (cookies) {
-            const jwtCookie = extractCookie(res, 'jwt');
-            const refreshCookie = extractCookie(res, 'refreshToken');
+            const clearedJwt = extractCookie(res, 'jwt');
+            const clearedRefresh = extractCookie(res, 'refreshToken');
             // Cleared cookies have an expiry in the past
-            if (jwtCookie) expect(jwtCookie).toMatch(/expires=Thu, 01 Jan 1970/i);
-            if (refreshCookie) expect(refreshCookie).toMatch(/expires=Thu, 01 Jan 1970/i);
+            if (clearedJwt) expect(clearedJwt).toMatch(/expires=Thu, 01 Jan 1970/i);
+            if (clearedRefresh) expect(clearedRefresh).toMatch(/expires=Thu, 01 Jan 1970/i);
         }
+    });
+
+    it('returns 401 when no JWT cookie is sent', async () => {
+        const res = await request(app).post('/api/v1/auth/logout');
+        expect(res.status).toBe(401);
     });
 });

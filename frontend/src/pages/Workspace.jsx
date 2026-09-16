@@ -133,6 +133,9 @@ export default function Workspace() {
             // We only send roomId now — userName/userId from client is ignored by backend.
             socket.emit('join', { roomId });
         });
+
+        socket.on('disconnect', () => setConnected(false));
+        socket.on('connect_error', () => setConnected(false));
         
         socket.on('userJoined', (usersList) => setUsers(usersList));
         
@@ -441,7 +444,8 @@ export default function Workspace() {
                         </button>
                         <button 
                             onClick={executeCode}
-                            disabled={isExecuting}
+                            disabled={isExecuting || !connected}
+                            title={!connected ? 'Connecting to server...' : undefined}
                             className="flex items-center gap-1.5 md:gap-2 bg-green-500 hover:bg-green-600 text-white px-3 md:px-5 py-1.5 rounded-lg text-sm font-medium transition-colors shadow-lg shadow-green-500/20 disabled:opacity-50"
                         >
                             {isExecuting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4 fill-current" />}

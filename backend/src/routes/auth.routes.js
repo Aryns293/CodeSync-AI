@@ -36,7 +36,7 @@ router.post('/login', authLimiter, validate(loginSchema), login);
 // Rate-limited to prevent brute-force against stored tokens.
 router.post('/refresh', authLimiter, refreshAccessToken);
 
-router.post('/logout', logout);
+router.post('/logout', protect, logout);
 router.put('/profile', protect, validate(updateProfileSchema), updateProfile);
 
 export default router;

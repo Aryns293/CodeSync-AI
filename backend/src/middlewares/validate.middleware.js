@@ -10,10 +10,13 @@ export const validate = (schema) => (req, res, next) => {
         next();
     } catch (error) {
         if (error instanceof ZodError) {
-            console.error("ZOD VALIDATION ERROR:", JSON.stringify(error.errors, null, 2), "REQUEST BODY:", req.body);
+            // Redact sensitive fields before logging so plaintext passwords
+            // never appear in server logs (e.g. on a failed login attempt).
+            const { password, ...safeBody } = req.body ?? {};
+            console.error('ZOD VALIDATION ERROR:', JSON.stringify(error.errors, null, 2), 'REQUEST BODY:', safeBody);
             return res.status(400).json({
                 success: false,
-                message: "Validation Error",
+                message: 'Validation Error',
                 errors: error.errors,
             });
         }

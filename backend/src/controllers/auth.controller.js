@@ -117,13 +117,15 @@ export const refreshAccessToken = async (req, res, next) => {
 // ─── Logout ───────────────────────────────────────────────────────────────────
 export const logout = async (req, res, next) => {
     try {
-        if (req.user) {
-            req.user.refreshToken = null;
-            await req.user.save();
-        }
+        // protect middleware guarantees req.user exists — no guard needed.
+        req.user.refreshToken = null;
+        await req.user.save();
 
-        res.cookie('jwt', '', { httpOnly: true, expires: new Date(0) });
-        res.cookie('refreshToken', '', { httpOnly: true, expires: new Date(0) });
+        // Use the same attribute set that was used to SET the cookies.
+        // Attribute mismatch (e.g. missing secure/sameSite) causes some
+        // browsers to treat the clear as targeting a different cookie.
+        res.cookie('jwt', '', { ...ACCESS_COOKIE_OPTS, maxAge: undefined, expires: new Date(0) });
+        res.cookie('refreshToken', '', { ...REFRESH_COOKIE_OPTS, maxAge: undefined, expires: new Date(0) });
 
         res.status(200).json({ success: true, message: 'Logged out successfully' });
     } catch (error) {
