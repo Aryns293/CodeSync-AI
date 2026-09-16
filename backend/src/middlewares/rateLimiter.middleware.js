@@ -11,13 +11,15 @@ export const apiLimiter = rateLimit({
     }
 });
 
+// Fix #10: 100/hr barely slows a brute-force attack.
+// Industry standard is 5–10 attempts per 15 min window.
 export const authLimiter = rateLimit({
-    windowMs: 60 * 60 * 1000, // 1 hour
-    max: 100, // Limit each IP to 100 create account/login requests per `window`
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 10, // 10 login/register attempts per IP per window
     standardHeaders: true,
     legacyHeaders: false,
     message: {
         success: false,
-        message: 'Too many login attempts from this IP, please try again after an hour'
+        message: 'Too many login attempts from this IP, please try again after 15 minutes'
     }
 });

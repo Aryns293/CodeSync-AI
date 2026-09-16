@@ -1,6 +1,22 @@
 import { User } from '../models/User.model.js';
-import { generateToken, generateRefreshToken } from '../services/auth.service.js';
+import { generateToken, generateRefreshToken, verifyRefreshToken } from '../services/auth.service.js';
 
+// ─── Cookie helpers ───────────────────────────────────────────────────────────
+const ACCESS_COOKIE_OPTS = {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    maxAge: 15 * 60 * 1000, // 15 min
+};
+
+const REFRESH_COOKIE_OPTS = {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+};
+
+// ─── Register ─────────────────────────────────────────────────────────────────
 export const register = async (req, res, next) => {
     try {
         const { name, email, password } = req.body;
@@ -17,30 +33,21 @@ export const register = async (req, res, next) => {
         user.refreshToken = refreshToken;
         await user.save();
 
-        res.cookie('jwt', token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict',
-            maxAge: 15 * 60 * 1000 // 15 mins
-        });
+        res.cookie('jwt', token, ACCESS_COOKIE_OPTS);
+        res.cookie('refreshToken', refreshToken, REFRESH_COOKIE_OPTS);
 
-        res.cookie('refreshToken', refreshToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict',
-            maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
-        });
-
+        // Fix #6: Do NOT return the raw token in the response body.
+        // Tokens live exclusively in httpOnly cookies to prevent XSS-based theft.
         res.status(201).json({
             success: true,
             user: { id: user._id, name: user.name, email: user.email },
-            token,
         });
     } catch (error) {
         next(error);
     }
 };
 
+// ─── Login ────────────────────────────────────────────────────────────────────
 export const login = async (req, res, next) => {
     try {
         const { email, password } = req.body;
@@ -56,30 +63,58 @@ export const login = async (req, res, next) => {
         user.refreshToken = refreshToken;
         await user.save();
 
-        res.cookie('jwt', token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict',
-            maxAge: 15 * 60 * 1000 // 15 mins
-        });
+        res.cookie('jwt', token, ACCESS_COOKIE_OPTS);
+        res.cookie('refreshToken', refreshToken, REFRESH_COOKIE_OPTS);
 
-        res.cookie('refreshToken', refreshToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict',
-            maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
-        });
-
+        // Fix #6: Token only in cookie, not in JSON body.
         res.status(200).json({
             success: true,
             user: { id: user._id, name: user.name, email: user.email },
-            token,
         });
     } catch (error) {
         next(error);
     }
 };
 
+// ─── Refresh Access Token (Fix #5) ────────────────────────────────────────────
+export const refreshAccessToken = async (req, res, next) => {
+    try {
+        const incomingRefreshToken = req.cookies?.refreshToken;
+
+        if (!incomingRefreshToken) {
+            return res.status(401).json({ success: false, message: 'Refresh token missing' });
+        }
+
+        // 1. Verify signature and expiry
+        let decoded;
+        try {
+            decoded = verifyRefreshToken(incomingRefreshToken);
+        } catch {
+            return res.status(401).json({ success: false, message: 'Invalid or expired refresh token' });
+        }
+
+        // 2. Check the token matches what we stored in DB (rotation guard)
+        const user = await User.findById(decoded.id);
+        if (!user || user.refreshToken !== incomingRefreshToken) {
+            // Token reuse detected — invalidate the stored token (token rotation)
+            if (user) {
+                user.refreshToken = null;
+                await user.save();
+            }
+            return res.status(401).json({ success: false, message: 'Refresh token reuse detected. Please log in again.' });
+        }
+
+        // 3. Issue a fresh access token
+        const newAccessToken = generateToken(user._id);
+        res.cookie('jwt', newAccessToken, ACCESS_COOKIE_OPTS);
+
+        res.status(200).json({ success: true, message: 'Access token refreshed' });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// ─── Logout ───────────────────────────────────────────────────────────────────
 export const logout = async (req, res, next) => {
     try {
         if (req.user) {
@@ -96,6 +131,7 @@ export const logout = async (req, res, next) => {
     }
 };
 
+// ─── Update Profile ───────────────────────────────────────────────────────────
 export const updateProfile = async (req, res, next) => {
     try {
         const { name, password } = req.body;

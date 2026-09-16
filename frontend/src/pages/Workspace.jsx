@@ -9,12 +9,15 @@ import { useAuth } from '../context/AuthContext';
 import clsx from 'clsx';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || '';
-const socket = io(BACKEND_URL, { autoConnect: false });
 
 export default function Workspace() {
     const { roomId } = useParams();
     const { user, logout } = useAuth();
     const navigate = useNavigate();
+
+    // Fix #12: socket as useRef — module-level singletons are a React anti-pattern.
+    // A ref keeps the socket instance stable across renders without causing re-renders.
+    const socketRef = useRef(null);
 
     const [connected, setConnected] = useState(false);
     const [language, setLanguage] = useState('cpp');
@@ -111,16 +114,24 @@ export default function Workspace() {
 
     useEffect(() => {
         if (!user) {
-            // Need a username, prompt for it if guest? For now, redirect to login
             navigate('/login');
             return;
         }
+
+        // Fix #12: create socket inside the effect so it's scoped to this mount.
+        const socket = io(BACKEND_URL, {
+            autoConnect: false,
+            withCredentials: true, // send the httpOnly jwt cookie for socket auth
+        });
+        socketRef.current = socket;
 
         socket.connect();
 
         socket.on('connect', () => {
             setConnected(true);
-            socket.emit('join', { roomId, user: { id: user.id, name: user.name, email: user.email } });
+            // Fix #8: server reads identity from the verified JWT cookie.
+            // We only send roomId now — userName/userId from client is ignored by backend.
+            socket.emit('join', { roomId });
         });
         
         socket.on('userJoined', (usersList) => setUsers(usersList));
@@ -172,8 +183,12 @@ export default function Workspace() {
         });
 
         return () => {
+            // Fix #11: remove all listeners BEFORE disconnect.
+            // Without socket.off(), React StrictMode double-invocation stacks listeners.
             socket.emit('leaveRoom');
+            socket.off();
             socket.disconnect();
+            socketRef.current = null;
         };
     }, [roomId, user, navigate]);
 
@@ -203,7 +218,8 @@ export default function Workspace() {
         monacoRef.current = monaco;
         
         editor.onDidChangeCursorPosition((e) => {
-            socket.emit('cursorChange', { roomId, userId: user.id, userName: user.name, position: e.position });
+            // Fix #8: server derives userId/userName from socket.user, so we only send position
+            socketRef.current?.emit('cursorChange', { roomId, position: e.position });
         });
     };
 
@@ -211,25 +227,26 @@ export default function Workspace() {
         setCode(newCode);
         const timestamp = new Date().toISOString();
         setLastModified({ by: user.name, at: timestamp });
-        socket.emit('codeChange', { roomId, code: newCode, userName: user.name, timestamp });
-        socket.emit('typing', { roomId, userName: user.name, userId: user.id });
+        // Fix #8: userName is stripped from payload — backend reads it from socket.user
+        socketRef.current?.emit('codeChange', { roomId, code: newCode, timestamp });
+        socketRef.current?.emit('typing', { roomId });
     };
 
     const handleLanguageChange = (e) => {
         const newLang = e.target.value;
         setLanguage(newLang);
-        socket.emit('languageChange', { roomId, language: newLang });
+        socketRef.current?.emit('languageChange', { roomId, language: newLang });
     };
 
     const executeCode = () => {
         setIsExecuting(true);
         setOutput('Executing...');
-        socket.emit('compileCode', { roomId, code, language, stdin });
+        socketRef.current?.emit('compileCode', { roomId, code, language, stdin });
     };
 
     const requestReview = () => {
         setIsReviewing(true);
-        socket.emit('getAIReview', { roomId, code });
+        socketRef.current?.emit('getAIReview', { roomId, code });
     };
 
     const copyRoomId = () => {

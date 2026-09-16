@@ -26,6 +26,10 @@ const runners = {
     filename: "Main.java",
     cmd: "javac Main.java && java Main",
   },
+  javascript: {
+    filename: "main.js",
+    cmd: "node main.js",
+  },
 };
 
 export function sandboxSupportsLanguage(language) {

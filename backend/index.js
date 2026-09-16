@@ -21,6 +21,25 @@ import { errorHandler } from './src/middlewares/errorHandler.middleware.js';
 
 dotenv.config({ path: path.join(import.meta.dirname, '../.env') });
 
+// ─── Fix #7: CORS allowlist ───────────────────────────────────────────────────
+// Reflect-any-origin + credentials:true is a known security misconfiguration.
+// In production set ALLOWED_ORIGINS="https://yourdomain.com" in your env file.
+const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim())
+    : ['http://localhost:5173', 'http://localhost:3000'];
+
+const corsOptions = {
+    origin: (origin, callback) => {
+        // Allow requests with no origin (curl, Postman, same-origin)
+        if (!origin || ALLOWED_ORIGINS.includes(origin)) {
+            callback(null, true);
+        } else {
+            callback(new Error(`CORS: origin ${origin} is not allowed`));
+        }
+    },
+    credentials: true,
+};
+
 const app = express();
 
 // Init Config
@@ -30,19 +49,20 @@ initGemini();
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
-        origin: '*',
+        // Fix #7: Socket.IO must use the same allowlist — '*' defeats credentials:true
+        origin: ALLOWED_ORIGINS,
         methods: ['GET', 'POST'],
-        credentials: true
-    }
+        credentials: true,
+    },
 });
 
 // Middleware
-app.use(cors({ origin: true, credentials: true }));
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-// Setup WebSockets
+// Setup WebSockets (Fix #8: auth middleware is set up inside setupSocketHandlers)
 setupSocketHandlers(io);
 
 // API Routes

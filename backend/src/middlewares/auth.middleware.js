@@ -1,6 +1,9 @@
 import jwt from 'jsonwebtoken';
 import { User } from '../models/User.model.js';
 
+// JWT_SECRET is guaranteed to exist — auth.service.js throws at module-load time if missing.
+const JWT_SECRET = process.env.JWT_SECRET;
+
 export const protect = async (req, res, next) => {
     let token;
 
@@ -15,7 +18,7 @@ export const protect = async (req, res, next) => {
     }
 
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret');
+        const decoded = jwt.verify(token, JWT_SECRET);
         req.user = await User.findById(decoded.id).select('-password');
         next();
     } catch (error) {

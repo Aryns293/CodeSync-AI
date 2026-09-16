@@ -1,5 +1,5 @@
 import express from 'express';
-import { register, login, logout, updateProfile } from '../controllers/auth.controller.js';
+import { register, login, logout, updateProfile, refreshAccessToken } from '../controllers/auth.controller.js';
 import { validate } from '../middlewares/validate.middleware.js';
 import { authLimiter } from '../middlewares/rateLimiter.middleware.js';
 import { protect } from '../middlewares/auth.middleware.js';
@@ -31,6 +31,11 @@ const updateProfileSchema = z.object({
 
 router.post('/register', authLimiter, validate(registerSchema), register);
 router.post('/login', authLimiter, validate(loginSchema), login);
+
+// Fix #5: Refresh token endpoint — reads the refreshToken cookie, issues a new access token.
+// Rate-limited to prevent brute-force against stored tokens.
+router.post('/refresh', authLimiter, refreshAccessToken);
+
 router.post('/logout', logout);
 router.put('/profile', protect, validate(updateProfileSchema), updateProfile);
 

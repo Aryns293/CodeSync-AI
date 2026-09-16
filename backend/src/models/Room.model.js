@@ -19,7 +19,17 @@ const roomSchema = new mongoose.Schema({
     code: {
         type: String,
         default: '// start coding here...',
-    }
+    },
+    // These fields are written by socket.service.js on every code change.
+    // Defining them here prevents Mongoose strict mode from silently dropping them.
+    lastModifiedBy: {
+        type: String,
+        default: null,
+    },
+    lastModifiedAt: {
+        type: String, // ISO timestamp string (matches what the client sends)
+        default: null,
+    },
 }, { timestamps: true });
 
 export const Room = mongoose.model('Room', roomSchema);

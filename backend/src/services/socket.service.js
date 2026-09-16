@@ -1,11 +1,29 @@
+import jwt from 'jsonwebtoken';
 import { runCode } from './execution.service.js';
 import { generateReview } from './gemini.service.js';
 import { Room } from '../models/Room.model.js';
+import { User } from '../models/User.model.js';
 
 const rooms = new Map();
 const roomData = new Map();
 const lastAction = new Map();
 const saveTimeouts = new Map();
+
+// ─── Cleanup when a room becomes empty ────────────────────────────────────────
+// Fix #13: Without this, rooms/roomData Maps grow forever on a long-running server.
+function cleanupRoomIfEmpty(roomId) {
+    const roomUsers = rooms.get(roomId);
+    if (!roomUsers || roomUsers.size > 0) return;
+
+    // Cancel any pending DB save for this room before clearing it
+    if (saveTimeouts.has(roomId)) {
+        clearTimeout(saveTimeouts.get(roomId));
+        saveTimeouts.delete(roomId);
+    }
+
+    rooms.delete(roomId);
+    roomData.delete(roomId);
+}
 
 function scheduleDbSave(roomId) {
     if (saveTimeouts.has(roomId)) {
@@ -13,6 +31,7 @@ function scheduleDbSave(roomId) {
     }
     
     saveTimeouts.set(roomId, setTimeout(async () => {
+        saveTimeouts.delete(roomId);
         const data = roomData.get(roomId);
         if (data) {
             try {
@@ -54,23 +73,63 @@ function throttled(socket, key, cooldownMs) {
     return false;
 }
 
+// ─── Helper: remove a user from a room and notify others ─────────────────────
+function removeUserFromRoom(io, socket, roomId) {
+    rooms.get(roomId)?.delete(socket.id);
+    const usersInRoom = Array.from(
+        new Map(
+            Array.from(rooms.get(roomId)?.values() || []).map((u) => [u.id, u])
+        ).values()
+    );
+    io.to(roomId).emit('userJoined', usersInRoom);
+    cleanupRoomIfEmpty(roomId);
+}
+
 export const setupSocketHandlers = (io) => {
+    // ─── Fix #8: Socket.IO auth middleware ────────────────────────────────────
+    // Runs before any event handler. Verifies the JWT from the httpOnly cookie.
+    // Unauthenticated connections are rejected here before they can touch any room data.
+    io.use(async (socket, next) => {
+        try {
+            const token = socket.handshake.headers.cookie
+                ?.split(';')
+                .map((c) => c.trim())
+                .find((c) => c.startsWith('jwt='))
+                ?.split('=')[1];
+
+            if (!token) {
+                return next(new Error('Authentication error: no token provided'));
+            }
+
+            const decoded = jwt.verify(token, process.env.JWT_SECRET);
+            const user = await User.findById(decoded.id).select('-password -refreshToken');
+            if (!user) {
+                return next(new Error('Authentication error: user not found'));
+            }
+
+            // Attach the verified server-side user — client can no longer spoof identity.
+            socket.user = { id: user._id.toString(), name: user.name, email: user.email };
+            next();
+        } catch (err) {
+            next(new Error('Authentication error: invalid token'));
+        }
+    });
+
     io.on('connection', (socket) => {
-        console.log('A user connected:', socket.id);
+        console.log('A user connected:', socket.id, '→', socket.user.name);
 
         let currentRoom = null;
-        let currentUser = null;
 
-        socket.on("join", async ({ roomId, user }) => {
+        socket.on('join', async ({ roomId }) => {
+            // Fix #8: user identity comes from socket.user (server-verified), not the client payload.
+            const user = socket.user;
+
             if (currentRoom) {
                 socket.leave(currentRoom);
-                rooms.get(currentRoom)?.delete(socket.id);
-                const usersInRoom = Array.from(new Map(Array.from(rooms.get(currentRoom)?.values() || []).map(u => [u.id, u])).values());
-                io.to(currentRoom).emit("userJoined", usersInRoom);
+                removeUserFromRoom(io, socket, currentRoom);
             }
 
             currentRoom = roomId;
-            currentUser = user;
 
             socket.join(roomId);
 
@@ -78,31 +137,40 @@ export const setupSocketHandlers = (io) => {
                 rooms.set(roomId, new Map());
             }
             rooms.get(roomId).set(socket.id, user);
-            const usersInRoom = Array.from(new Map(Array.from(rooms.get(roomId).values()).map(u => [u.id, u])).values());
-            io.to(roomId).emit("userJoined", usersInRoom);
+            const usersInRoom = Array.from(
+                new Map(Array.from(rooms.get(roomId).values()).map((u) => [u.id, u])).values()
+            );
+            io.to(roomId).emit('userJoined', usersInRoom);
 
             // Fetch from DB if not in memory
             let roomInfo = roomData.get(roomId);
             if (!roomInfo) {
                 const dbRoom = await Room.findOne({ roomId });
                 if (dbRoom) {
-                    roomInfo = { code: dbRoom.code, language: dbRoom.language };
+                    roomInfo = {
+                        code: dbRoom.code,
+                        language: dbRoom.language,
+                        lastModifiedBy: dbRoom.lastModifiedBy,
+                        lastModifiedAt: dbRoom.lastModifiedAt,
+                    };
                     roomData.set(roomId, roomInfo);
                 }
             }
 
             if (roomInfo?.code) {
-                socket.emit("codeUpdate", { 
+                socket.emit('codeUpdate', { 
                     code: roomInfo.code,
                     lastModifiedBy: roomInfo.lastModifiedBy,
-                    lastModifiedAt: roomInfo.lastModifiedAt
+                    lastModifiedAt: roomInfo.lastModifiedAt,
                 });
             }
-            if (roomInfo?.language) socket.emit("languageUpdate", roomInfo.language);
+            if (roomInfo?.language) socket.emit('languageUpdate', roomInfo.language);
         });
 
-        socket.on("codeChange", async ({ roomId, code, userName, timestamp }) => {
-            socket.to(roomId).emit("codeUpdate", { code, lastModifiedBy: userName, lastModifiedAt: timestamp });
+        socket.on('codeChange', async ({ roomId, code, timestamp }) => {
+            // Fix #8: userName comes from socket.user, not client payload
+            const userName = socket.user.name;
+            socket.to(roomId).emit('codeUpdate', { code, lastModifiedBy: userName, lastModifiedAt: timestamp });
             
             if (!roomData.has(roomId)) roomData.set(roomId, {});
             roomData.get(roomId).code = code;
@@ -112,71 +180,69 @@ export const setupSocketHandlers = (io) => {
             scheduleDbSave(roomId);
         });
 
-        socket.on("leaveRoom", () => {
-             if(currentRoom && currentUser){
-                rooms.get(currentRoom)?.delete(socket.id);
-                const usersInRoom = Array.from(new Map(Array.from(rooms.get(currentRoom)?.values() || []).map(u => [u.id, u])).values());
-                io.to(currentRoom).emit("userJoined", usersInRoom);
+        socket.on('leaveRoom', () => {
+            if (currentRoom) {
                 socket.leave(currentRoom);
+                removeUserFromRoom(io, socket, currentRoom);
                 currentRoom = null;
-                currentUser = null;
             }
         });
 
-        socket.on("typing", ({ roomId, userName, userId }) => {
-            socket.to(roomId).emit("userTyping", { userName, userId });
+        socket.on('typing', ({ roomId }) => {
+            socket.to(roomId).emit('userTyping', { userName: socket.user.name, userId: socket.user.id });
         });
 
-        socket.on("cursorChange", ({ roomId, userId, userName, position }) => {
-            socket.to(roomId).emit("cursorUpdate", { userId, userName, position });
+        socket.on('cursorChange', ({ roomId, position }) => {
+            socket.to(roomId).emit('cursorUpdate', {
+                userId: socket.user.id,
+                userName: socket.user.name,
+                position,
+            });
         });
 
-        socket.on("languageChange", ({ roomId, language }) => {
-            io.to(roomId).emit("languageUpdate", language);
+        socket.on('languageChange', ({ roomId, language }) => {
+            io.to(roomId).emit('languageUpdate', language);
             if (!roomData.has(roomId)) roomData.set(roomId, {});
             roomData.get(roomId).language = language;
             scheduleDbSave(roomId);
         });
 
-        socket.on("compileCode", async ({ code, roomId, language, stdin }) => {
+        socket.on('compileCode', async ({ code, roomId, language, stdin }) => {
             if (!rooms.has(roomId)) return;
 
-            if (throttled(socket, "compile", 3000)) {
-                socket.emit("codeResponse", {
-                    run: { output: "Slow down a little - please wait a couple seconds between runs." },
+            if (throttled(socket, 'compile', 3000)) {
+                socket.emit('codeResponse', {
+                    run: { output: 'Slow down a little - please wait a couple seconds between runs.' },
                 });
                 return;
             }
 
-            // Using our new execution service
-            const result = await runCode({ language, code, stdin, roomId, userId: socket.user?.id });
-            socket.emit("codeResponse", { run: result });
+            const result = await runCode({ language, code, stdin, roomId, userId: socket.user.id });
+            socket.emit('codeResponse', { run: result });
         });
 
-        socket.on("getAIReview", async ({ roomId, code }) => {
-            if (throttled(socket, "review", 8000)) {
-                io.to(roomId).emit("AIReview", "Please wait a few seconds before requesting another review.");
+        socket.on('getAIReview', async ({ roomId, code }) => {
+            if (throttled(socket, 'review', 8000)) {
+                io.to(roomId).emit('AIReview', 'Please wait a few seconds before requesting another review.');
                 return;
             }
 
             try {
                 const language = roomData.get(roomId)?.language || detectLang(code);
                 const text = await generateReview(code, language);
-                io.to(roomId).emit("AIReview", text);
+                io.to(roomId).emit('AIReview', text);
             } catch (error) {
-                console.error("AI Review error:", error.message);
-                io.to(roomId).emit("AIReview", "Failed to generate AI review. Please make sure GEMINI_API_KEY is configured.");
+                console.error('AI Review error:', error.message);
+                io.to(roomId).emit('AIReview', 'Failed to generate AI review. Please make sure GEMINI_API_KEY is configured.');
             }
         });
 
-        socket.on("disconnect" , () => {
-            if(currentRoom && currentUser){
-                rooms.get(currentRoom)?.delete(socket.id);
-                const usersInRoom = Array.from(new Map(Array.from(rooms.get(currentRoom)?.values() || []).map(u => [u.id, u])).values());
-                io.to(currentRoom).emit("userJoined", usersInRoom);
+        socket.on('disconnect', () => {
+            if (currentRoom) {
+                removeUserFromRoom(io, socket, currentRoom);
             }
             lastAction.delete(socket.id);
-            console.log('A user disconnected');
+            console.log('A user disconnected:', socket.user?.name);
         });
     });
 };

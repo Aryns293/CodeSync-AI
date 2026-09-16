@@ -26,7 +26,7 @@ export const generateReview = async (code, language) => {
     `;
 
     const response = await aiInstance.models.generateContent({
-        model: "gemini-3.1-flash-lite",
+        model: "gemini-2.0-flash-lite",
         contents: prompt,
     });
 

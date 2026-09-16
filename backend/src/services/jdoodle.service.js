@@ -12,6 +12,7 @@ const jdoodleLanguages = {
   cpp: { language: "cpp", versionIndex: "5" },         // C++ 17 (GCC 9.1.0)
   python3: { language: "python3", versionIndex: "3" }, // Python 3.9.9
   java: { language: "java", versionIndex: "4" },       // JDK 17.0.1
+  javascript: { language: "nodejs", versionIndex: "4" }, // Node.js 18
 };
 
 export async function executeWithJDoodle({ language, code, stdin }) {
