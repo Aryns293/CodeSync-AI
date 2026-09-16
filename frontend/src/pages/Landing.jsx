@@ -81,59 +81,18 @@ export default function Landing() {
                             </div>
                         </div>
                     </div>
-                    <div className="bg-[#151A23] p-6 text-left font-mono text-sm leading-relaxed overflow-hidden relative">
-                        <div className="text-slate-400">
-                            <span className="text-purple-400">import</span> {'{'} useState, useEffect {'}'} <span className="text-purple-400">from</span> <span className="text-green-400">'react'</span>;
-                            <br /><br />
-                            <span className="text-purple-400">export default function</span> <span className="text-blue-400">CollaborativeEditor</span>() {'{'}
-                            <br />
-                            &nbsp;&nbsp;<span className="text-purple-400">const</span> [code, setCode] = <span className="text-blue-400">useState</span>(<span className="text-green-400">'// Start typing...'</span>);
-                            <br /><br />
-                            &nbsp;&nbsp;<span className="text-slate-500">{'// Real-time synchronization'}</span>
-                            <br />
-                            &nbsp;&nbsp;<span className="text-blue-400">useEffect</span>(() =&gt; {'{'}
-                            <br />
-                            &nbsp;&nbsp;&nbsp;&nbsp;socket.<span className="text-blue-400">on</span>(<span className="text-green-400">'code-update'</span>, (newCode) =&gt; {'{'}
-                            <br />
-                            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span className="text-blue-400">setCode</span>(newCode);
-                            <br />
-                            &nbsp;&nbsp;&nbsp;&nbsp;{'}'});
-                            <br />
-                            &nbsp;&nbsp;{'}'}, []);
-                            <br /><br />
-                            &nbsp;&nbsp;<span className="text-purple-400">return</span> (
-                            <br />
-                            &nbsp;&nbsp;&nbsp;&nbsp;&lt;<span className="text-rose-400">Editor</span>
-                            <br />
-                            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span className="text-orange-300">value</span>={'{'}code{'}'}
-                            <br />
-                            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span className="text-orange-300">theme</span>=<span className="text-green-400">"vs-dark"</span>
-                            <br />
-                            &nbsp;&nbsp;&nbsp;&nbsp;/&gt;
-                            <br />
-                            &nbsp;&nbsp;);
-                            <br />
-                            {'}'}
-                        </div>
-                        
-                        {/* Fake Cursors */}
-                        <motion.div 
-                            animate={{ x: [0, 100, 50, 0], y: [0, -20, 20, 0] }}
-                            transition={{ repeat: Infinity, duration: 5, ease: "easeInOut" }}
-                            className="absolute top-20 left-48 flex items-center"
-                        >
-                            <MousePointer2 className="text-indigo-400 fill-indigo-400/20 transform -rotate-12" size={16} />
-                            <span className="ml-2 bg-indigo-500 text-white text-[10px] px-2 py-0.5 rounded-full">Aryan</span>
-                        </motion.div>
-                        
-                        <motion.div 
-                            animate={{ x: [0, -50, -80, 0], y: [0, 40, -10, 0] }}
-                            transition={{ repeat: Infinity, duration: 6, ease: "easeInOut" }}
-                            className="absolute top-48 left-80 flex items-center"
-                        >
-                            <MousePointer2 className="text-rose-400 fill-rose-400/20 transform -rotate-12" size={16} />
-                            <span className="ml-2 bg-rose-500 text-white text-[10px] px-2 py-0.5 rounded-full">Sarah</span>
-                        </motion.div>
+                    <div className="bg-[#151A23] text-left overflow-hidden relative flex items-center justify-center">
+                        <video 
+                            src="https://drive.google.com/uc?export=download&id=1v-hAw5xa8vjwLy-A-GsI5bHGvme3T1If"
+                            autoPlay
+                            loop
+                            muted
+                            controls
+                            className="w-full h-auto object-cover"
+                            ref={(el) => {
+                                if (el) el.playbackRate = 2.0;
+                            }}
+                        />
                     </div>
                 </motion.div>
             </main>
