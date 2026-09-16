@@ -45,8 +45,13 @@ const corsOptions = {
             return callback(new Error(`CORS: origin ${origin} is not allowed`));
         }
 
-        // Zero-config fallback: reflect the origin (allow all)
-        callback(null, true);
+        // Only allow fallback reflect-origin in development mode for convenience
+        if (process.env.NODE_ENV !== 'production') {
+            return callback(null, true);
+        }
+
+        // In production, reject unconfigured cross-origin requests
+        return callback(new Error(`CORS: origin ${origin} is not allowed (ALLOWED_ORIGINS not set)`));
     },
     credentials: true,
 };
@@ -60,8 +65,8 @@ initGemini();
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
-        // Use strict allowlist if defined, otherwise reflect origin (true)
-        origin: ALLOWED_ORIGINS || true,
+        // Use strict allowlist if defined, otherwise reflect origin (true) ONLY in dev
+        origin: ALLOWED_ORIGINS || (process.env.NODE_ENV !== 'production' ? true : []),
         methods: ['GET', 'POST'],
         credentials: true,
     },
