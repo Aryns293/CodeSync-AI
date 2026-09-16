@@ -82,12 +82,13 @@ export default function Landing() {
                         </div>
                     </div>
                     <div className="bg-[#151A23] w-full aspect-video overflow-hidden relative">
-                        <iframe
-                            src="https://drive.google.com/file/d/1v-hAw5xa8vjwLy-A-GsI5bHGvme3T1If/preview"
-                            className="w-full h-full border-0"
-                            allow="autoplay"
-                            allowFullScreen
-                            title="CodeSync Demo"
+                        <video
+                            src="https://drive.google.com/uc?export=download&id=1mkh0Mjz02U6bKarQ089P9ol2pl5o7O9A"
+                            autoPlay
+                            loop
+                            muted
+                            playsInline
+                            className="w-full h-full object-cover"
                         />
                     </div>
                 </motion.div>
