@@ -81,23 +81,13 @@ export default function Landing() {
                             </div>
                         </div>
                     </div>
-                    <div className="bg-[#151A23] w-full aspect-video overflow-hidden relative flex items-center justify-center">
-                        <video 
-                            src="https://drive.google.com/uc?export=download&id=1v-hAw5xa8vjwLy-A-GsI5bHGvme3T1If"
-                            autoPlay
-                            loop
-                            muted
-                            controls
-                            className="w-full h-full object-cover"
-                            onCanPlay={(e) => {
-                                e.target.playbackRate = 2.0;
-                            }}
-                            ref={(el) => {
-                                if (el) {
-                                    el.playbackRate = 2.0;
-                                    el.defaultPlaybackRate = 2.0;
-                                }
-                            }}
+                    <div className="bg-[#151A23] w-full aspect-video overflow-hidden relative">
+                        <iframe
+                            src="https://drive.google.com/file/d/1v-hAw5xa8vjwLy-A-GsI5bHGvme3T1If/preview"
+                            className="w-full h-full border-0"
+                            allow="autoplay"
+                            allowFullScreen
+                            title="CodeSync Demo"
                         />
                     </div>
                 </motion.div>
