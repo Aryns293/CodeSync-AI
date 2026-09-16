@@ -43,7 +43,7 @@ The platform supports multiple programming languages and provides a seamless col
 
 ## ⚙️ Multi-Language Code Execution
 
-Executes code in a locked-down, single-use Docker container per run (network disabled, memory/CPU/process limits, non-root user, execution timeout) - with an automatic fallback to Judge0 if Docker isn't available on the host.
+Executes code in a locked-down, single-use Docker container per run (network disabled, memory/CPU/process limits, non-root user, execution timeout) - with an automatic fallback to JDoodle if Docker isn't available on the host.
 
 Supported languages:
 
@@ -77,7 +77,7 @@ Supported languages:
 
 - Clients connect to the backend using WebSockets.
 - Socket.IO synchronizes editor changes across all connected users.
-- Code execution requests run in an isolated Docker container (`docker run --network none ...`); if no Docker daemon is reachable, requests fall back to the Judge0 API automatically.
+- Code execution requests run in an isolated Docker container (`docker run --network none ...`); if no Docker daemon is reachable, requests fall back to the JDoodle API automatically.
 - AI review requests are processed using the Gemini API.
 
 ---
@@ -144,8 +144,8 @@ npm run dev                 # opens on :5173
 | Variable | Where | Required? | Purpose |
 |---|---|---|---|
 | `GEMINI_API_KEY` | root `.env` | Yes | AI Review |
-| `RAPIDAPI_KEY` | root `.env` | Optional | Judge0 fallback if Docker isn't available |
-| `USE_DOCKER_SANDBOX` | root `.env` | Optional | Set to `false` to always use Judge0 |
+| `RAPIDAPI_KEY` | root `.env` | Optional | JDoodle fallback if Docker isn't available |
+| `USE_DOCKER_SANDBOX` | root `.env` | Optional | Set to `false` to always use JDoodle |
 | `SELF_PING_URL` | root `.env` | Optional | Prevents a free-tier host from sleeping, once deployed |
 | `VITE_BACKEND_URL` | `frontend/.env` | Optional | Points local frontend at local backend |
 
