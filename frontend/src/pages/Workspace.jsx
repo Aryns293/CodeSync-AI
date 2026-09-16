@@ -237,7 +237,10 @@ export default function Workspace() {
         const timestamp = new Date().toISOString();
         setLastModified({ by: user.name, at: timestamp });
         // Fix #8: userName is stripped from payload — backend reads it from socket.user
-        socketRef.current?.emit('codeChange', { roomId, code: newCode, timestamp });
+        const t0 = Date.now();
+        socketRef.current?.emit('codeChange', { roomId, code: newCode, timestamp }, () => {
+            console.log(`🔥 ACK Latency (RTT): ${Date.now() - t0}ms`);
+        });
         socketRef.current?.emit('typing', { roomId });
     };
 

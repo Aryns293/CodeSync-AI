@@ -167,7 +167,7 @@ export const setupSocketHandlers = (io) => {
             if (roomInfo?.language) socket.emit('languageUpdate', roomInfo.language);
         });
 
-        socket.on('codeChange', async ({ roomId, code, timestamp }) => {
+        socket.on('codeChange', async ({ roomId, code, timestamp }, callback) => {
             // Fix #8: userName comes from socket.user, not client payload
             const userName = socket.user.name;
             socket.to(roomId).emit('codeUpdate', { code, lastModifiedBy: userName, lastModifiedAt: timestamp });
@@ -178,6 +178,7 @@ export const setupSocketHandlers = (io) => {
             roomData.get(roomId).lastModifiedAt = timestamp;
 
             scheduleDbSave(roomId);
+            if (typeof callback === 'function') callback();
         });
 
         socket.on('leaveRoom', () => {
