@@ -67,7 +67,7 @@ export default function Landing() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.8, delay: 0.5 }}
                     id="demo"
-                    className="w-full max-w-5xl rounded-2xl overflow-hidden glass-panel glow-border border-white/10 shadow-2xl relative"
+                    className="w-full max-w-7xl rounded-2xl overflow-hidden glass-panel glow-border border-white/10 shadow-2xl relative"
                 >
                     <div className="h-12 bg-[#1A1F2B] border-b border-white/5 flex items-center px-4 space-x-2">
                         <div className="flex space-x-2">
@@ -81,16 +81,22 @@ export default function Landing() {
                             </div>
                         </div>
                     </div>
-                    <div className="bg-[#151A23] text-left overflow-hidden relative flex items-center justify-center">
+                    <div className="bg-[#151A23] w-full aspect-video overflow-hidden relative flex items-center justify-center">
                         <video 
                             src="https://drive.google.com/uc?export=download&id=1v-hAw5xa8vjwLy-A-GsI5bHGvme3T1If"
                             autoPlay
                             loop
                             muted
                             controls
-                            className="w-full h-auto object-cover"
+                            className="w-full h-full object-cover"
+                            onCanPlay={(e) => {
+                                e.target.playbackRate = 2.0;
+                            }}
                             ref={(el) => {
-                                if (el) el.playbackRate = 2.0;
+                                if (el) {
+                                    el.playbackRate = 2.0;
+                                    el.defaultPlaybackRate = 2.0;
+                                }
                             }}
                         />
                     </div>
