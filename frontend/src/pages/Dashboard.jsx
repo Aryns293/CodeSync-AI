@@ -116,7 +116,7 @@ export default function Dashboard() {
                     <form onSubmit={handleJoinRoom} className="w-full mt-auto flex gap-2">
                         <input 
                             type="text" 
-                            placeholder="e.g. 849201"
+                            placeholder="Paste room UUID here"
                             value={joinId}
                             onChange={(e) => setJoinId(e.target.value)}
                             className="flex-1 bg-[#0B0E14] border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all font-mono placeholder:text-slate-600"

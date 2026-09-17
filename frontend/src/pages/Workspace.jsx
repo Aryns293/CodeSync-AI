@@ -399,10 +399,10 @@ export default function Workspace() {
                             onChange={handleLanguageChange}
                             className="bg-[#151A23] border border-[#232B3A] text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:border-indigo-500 transition-colors text-gray-200"
                         >
-                            <option value="cpp">C++ (GCC 9.2)</option>
-                            <option value="python3">Python (3.8)</option>
-                            <option value="javascript">JavaScript (Node)</option>
-                            <option value="java">Java (JDK 13)</option>
+                            <option value="cpp">C++</option>
+                            <option value="python3">Python 3</option>
+                            <option value="javascript">JavaScript (Node.js)</option>
+                            <option value="java">Java</option>
                         </select>
                         <AnimatePresence>
                             {Object.keys(typingUsers).length > 0 && (
