@@ -1,8 +1,11 @@
-import { spawn } from "child_process";
+import { spawn, exec as execCb } from "child_process";
 import { promises as fs } from "fs";
 import path from "path";
 import os from "os";
 import crypto from "crypto";
+import { promisify } from "util";
+
+const exec = promisify(execCb);
 
 // One shared image with g++, python3 and a JDK baked in (see execution-image/Dockerfile).
 // Build it once with: docker build -t realtime-ide-sandbox ./backend/execution-image
@@ -37,7 +40,47 @@ export function sandboxSupportsLanguage(language) {
 }
 
 /**
+ * Forcibly kills a named container and verifies it stopped.
+ *
+ * Three-phase cleanup:
+ *  1. `docker kill`    — sends SIGKILL to PID 1 inside the container.
+ *  2. `docker inspect` — confirms the container actually reached "exited" state.
+ *                        docker kill is a signal, not a guarantee.
+ *  3. `docker rm -f`   — removes the container record unconditionally so
+ *                        orphaned containers don't accumulate on the host.
+ *
+ * All phases swallow their own errors — a failure in one step must never
+ * propagate back to the caller or cause an unhandled rejection.
+ */
+async function forceKillContainer(containerId) {
+  // Phase 1: send SIGKILL directly to the container (not just the CLI process)
+  await exec(`docker kill ${containerId}`).catch(() => {});
+
+  // Phase 2: verify it actually stopped
+  try {
+    const { stdout } = await exec(`docker inspect ${containerId}`);
+    const state = JSON.parse(stdout)[0]?.State?.Status;
+    if (state && state !== "exited") {
+      // Container survived SIGKILL — force-remove as last resort
+      await exec(`docker rm -f ${containerId}`).catch(() => {});
+    }
+  } catch {
+    // inspect failed — container is already gone or was never created; nothing to do
+  }
+
+  // Phase 3: remove the stopped container record from the host
+  await exec(`docker rm -f ${containerId}`).catch(() => {});
+}
+
+/**
  * Runs untrusted code inside a locked-down, single-use Docker container.
+ *
+ * Container lifecycle is fully explicit:
+ *  - Container is named upfront (`exec_<uuid>`) so we always know which one to kill.
+ *  - On timeout: kills the Docker CLI process AND the named container.
+ *  - After kill: verifies the container actually exited (defensive cleanup).
+ *  - On normal exit: `--rm` removes the container automatically at zero extra cost.
+ *
  * Returns { output } on success or timeout, matching the shape the rest of
  * the app already expects from the old Piston response.
  */
@@ -54,28 +97,26 @@ export async function executeInSandbox({ language, code, stdin }) {
   await fs.chmod(workDir, 0o777);
   await fs.writeFile(path.join(workDir, runner.filename), code ?? "");
 
+  // ── Named container ──────────────────────────────────────────────────────────
+  // Generate a unique container name before spawning.
+  // This gives the timeout handler an explicit, trackable target to kill —
+  // not just the Docker CLI process, but the actual running container.
+  const containerId = `exec_${crypto.randomUUID()}`;
+
   const dockerArgs = [
     "run",
-    "--rm",
+    "--name", containerId,          // named so we can `docker kill` it by ID later
+    "--rm",                         // auto-remove on normal exit — no manual cleanup needed
     "-i",
-    "--network",
-    "none", // no internet access from submitted code
-    "--memory",
-    "512m",
-    "--memory-swap",
-    "512m",
-    "--cpus",
-    "0.5",
-    "--pids-limit",
-    "64", // blocks fork bombs
-    "--security-opt",
-    "no-new-privileges",
-    "--cap-drop",
-    "ALL",
-    "-v",
-    `${workDir}:/sandbox`,
-    "-w",
-    "/sandbox",
+    "--network", "none",            // no internet access from submitted code
+    "--memory", "512m",
+    "--memory-swap", "512m",
+    "--cpus", "0.5",
+    "--pids-limit", "64",           // blocks fork bombs
+    "--security-opt", "no-new-privileges",
+    "--cap-drop", "ALL",
+    "-v", `${workDir}:/sandbox`,
+    "-w", "/sandbox",
     SANDBOX_IMAGE,
     "bash",
     "-c",
@@ -97,7 +138,20 @@ export async function executeInSandbox({ language, code, stdin }) {
     };
 
     const timer = setTimeout(() => {
+      // ── Timeout: two explicit kill targets ────────────────────────────────────
+      //
+      // Target 1 — the Docker CLI process (child).
+      //   child is the `docker run` process Node.js spawned. Killing it reclaims
+      //   the process handle but does NOT reach the container itself.
+      //
+      // Target 2 — the container by name (containerId).
+      //   Without this, an infinite loop keeps running inside an orphaned container.
+      //   Docker's resource limits will eventually intervene, but there is no
+      //   explicit guarantee of when — and we can't verify it actually stopped.
+      //   forceKillContainer kills the container, verifies it exited, then removes it.
       child.kill("SIGKILL");
+      forceKillContainer(containerId).catch(() => {}); // fire-and-forget; errors are swallowed
+
       finish({ output: `Error: execution timed out after ${EXEC_TIMEOUT_MS / 1000}s` });
     }, EXEC_TIMEOUT_MS);
 
