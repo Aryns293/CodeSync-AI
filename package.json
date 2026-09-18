@@ -48,7 +48,9 @@
     "globalSetup": "./jest.globalSetup.js",
     "testTimeout": 30000
   },
-  "mongodbMemoryServer": {
-    "version": "7.0.14"
+  "config": {
+    "mongodbMemoryServer": {
+      "version": "7.0.14"
+    }
   }
 }
