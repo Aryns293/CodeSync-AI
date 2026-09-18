@@ -156,8 +156,18 @@ export async function executeInSandbox({ language, code, stdin }) {
       finish({ output: `Error: execution timed out after ${EXEC_TIMEOUT_MS / 1000}s` });
     }, EXEC_TIMEOUT_MS);
 
-    child.stdout.on("data", (d) => { if (stdout.length < MAX_OUTPUT) stdout += d; });
-    child.stderr.on("data", (d) => { if (stderr.length < MAX_OUTPUT) stderr += d; });
+    child.stdout.on("data", (d) => { 
+      if (stdout.length < MAX_OUTPUT) {
+        stdout += d;
+        if (stdout.length >= MAX_OUTPUT) stdout += '\n\n...[Output truncated at 100,000 characters]';
+      }
+    });
+    child.stderr.on("data", (d) => { 
+      if (stderr.length < MAX_OUTPUT) {
+        stderr += d;
+        if (stderr.length >= MAX_OUTPUT) stderr += '\n\n...[Error output truncated at 100,000 characters]';
+      }
+    });
 
     child.on("error", (err) => {
       // Most common cause: docker isn't installed / daemon isn't reachable on this host.
