@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import api from '../utils/api';
+import api, { refreshClient } from '../utils/api';
 
 const AuthContext = createContext();
 
@@ -21,7 +21,7 @@ export const AuthProvider = ({ children }) => {
                 return;
             }
             try {
-                await api.post('/auth/refresh');
+                await refreshClient.post('/auth/refresh');
                 // Refresh succeeded — the server confirmed a valid session.
                 setUser(JSON.parse(storedUser));
             } catch {

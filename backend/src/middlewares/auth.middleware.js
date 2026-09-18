@@ -19,7 +19,7 @@ export const protect = async (req, res, next) => {
 
     try {
         const decoded = jwt.verify(token, JWT_SECRET);
-        req.user = await User.findById(decoded.id).select('-password');
+        req.user = await User.findById(decoded.id).select('-password -refreshToken');
         // Guard: token valid but user was deleted after it was issued
         if (!req.user) {
             return res.status(401).json({ success: false, message: 'Not authorized — account no longer exists' });
