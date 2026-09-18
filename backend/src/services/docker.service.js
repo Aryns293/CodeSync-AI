@@ -153,7 +153,7 @@ export async function executeInSandbox({ language, code, stdin }) {
       child.kill("SIGKILL");
       forceKillContainer(containerId).catch(() => {}); // fire-and-forget; errors are swallowed
 
-      finish({ output: `Error: execution timed out after ${EXEC_TIMEOUT_MS / 1000}s` });
+      finish({ output: `Error: execution timed out after ${EXEC_TIMEOUT_MS / 1000}s`, isError: true });
     }, EXEC_TIMEOUT_MS);
 
     child.stdout.on("data", (d) => { 
@@ -171,11 +171,11 @@ export async function executeInSandbox({ language, code, stdin }) {
 
     child.on("error", (err) => {
       // Most common cause: docker isn't installed / daemon isn't reachable on this host.
-      finish({ output: `Error: sandbox unavailable (${err.message})`, sandboxUnavailable: true });
+      finish({ output: `Error: sandbox unavailable (${err.message})`, sandboxUnavailable: true, isError: true });
     });
 
     child.on("close", (exitCode) => {
-      finish({ output: (stdout + (stdout && stderr ? '\n' : '') + stderr) || `Process exited with code ${exitCode}` });
+      finish({ output: (stdout + (stdout && stderr ? '\n' : '') + stderr) || `Process exited with code ${exitCode}`, isError: exitCode !== 0 });
     });
 
     child.stdin.write(stdin || "");

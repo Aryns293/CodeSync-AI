@@ -16,17 +16,17 @@ export const runCode = async ({ language, code, stdin, roomId, userId }) => {
                     console.warn("Docker sandbox unavailable, falling back to JDoodle");
                     result = await executeWithJDoodle({ language, code, stdin });
                 } else {
-                    result = { output: "Error: Docker is not running on the server, and JDoodle fallback is not configured. Please start Docker." };
+                    result = { output: "Error: Docker is not running on the server, and JDoodle fallback is not configured. Please start Docker.", isError: true };
                 }
             }
         } else if (jdoodleIsConfigured()) {
             result = await executeWithJDoodle({ language, code, stdin });
         } else {
-            result = { output: `Error: no execution provider configured for "${language}"` };
+            result = { output: `Error: no execution provider configured for "${language}"`, isError: true };
         }
 
         const executionTimeMs = Date.now() - startTime;
-        const success = !result.output?.startsWith("Error:");
+        const success = result.isError ? false : true;
 
         // Save execution log
         await ExecutionLog.create({

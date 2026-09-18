@@ -18,7 +18,7 @@ const jdoodleLanguages = {
 export async function executeWithJDoodle({ language, code, stdin }) {
   const langConfig = jdoodleLanguages[language];
   if (!langConfig) {
-    return { output: `Error: unsupported language "${language}" for JDoodle execution` };
+    return { output: `Error: unsupported language "${language}" for JDoodle execution`, isError: true };
   }
 
   try {
@@ -42,10 +42,11 @@ export async function executeWithJDoodle({ language, code, stdin }) {
 
     // JDoodle returns { output: "...", statusCode: 200, memory: "...", cpuTime: "..." }
     const output = data.output || "No output";
-    return { output };
+    return { output, isError: data.statusCode !== 200 };
   } catch (error) {
     return {
       output: `Error: ${error.response?.data?.error || error.message}`,
+      isError: true,
     };
   }
 }
