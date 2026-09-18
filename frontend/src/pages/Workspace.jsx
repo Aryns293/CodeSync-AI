@@ -221,10 +221,12 @@ export default function Workspace() {
             ydocRef.current?.destroy();
             socketRef.current = null;
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [roomId, user, navigate]);
 
     useEffect(() => {
         updateDecorations();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isFocusMode]);
 
     const updateDecorations = () => {
