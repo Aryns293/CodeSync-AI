@@ -59,8 +59,8 @@ export const AuthProvider = ({ children }) => {
         localStorage.removeItem('user');
     };
 
-    const updateProfile = async (name, password) => {
-        const { data } = await api.put('/auth/profile', { name, password });
+    const updateProfile = async (name, password, currentPassword) => {
+        const { data } = await api.put('/auth/profile', { name, password, currentPassword });
         if (data.success) {
             setUser(data.user);
             localStorage.setItem('user', JSON.stringify(data.user));

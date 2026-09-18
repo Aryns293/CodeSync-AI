@@ -1,7 +1,8 @@
 {
-  "name": "realtime-code-editor",
+  "name": "codesync-ai",
   "version": "1.0.0",
-  "main": "index.js",
+  "description": "A collaborative real-time code editor",
+  "main": "backend/index.js",
   "type": "module",
   "scripts": {
     "test": "node --experimental-vm-modules node_modules/.bin/jest --runInBand",

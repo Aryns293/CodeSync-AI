@@ -11,11 +11,7 @@ export const runCode = async ({ language, code, stdin, roomId, userId }) => {
         if (USE_DOCKER_SANDBOX && sandboxSupportsLanguage(language)) {
             result = await executeInSandbox({ language, code, stdin });
             
-            if (
-                result.output?.includes("Error: sandbox unavailable") ||
-                result.output?.includes("failed to connect to the docker API") ||
-                result.output?.includes("Is the docker daemon running?")
-            ) {
+            if (result.sandboxUnavailable) {
                 if (jdoodleIsConfigured()) {
                     console.warn("Docker sandbox unavailable, falling back to JDoodle");
                     result = await executeWithJDoodle({ language, code, stdin });

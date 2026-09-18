@@ -16,6 +16,7 @@ export default function Dashboard() {
     const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
     const [profileName, setProfileName] = useState(user?.name || '');
     const [profilePassword, setProfilePassword] = useState('');
+    const [currentPassword, setCurrentPassword] = useState('');
     const [profileError, setProfileError] = useState('');
     const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
     const [profileSuccess, setProfileSuccess] = useState('');
@@ -59,13 +60,14 @@ export default function Dashboard() {
         setIsUpdatingProfile(true);
 
         try {
-            await updateProfile(profileName, profilePassword || undefined);
+            await updateProfile(profileName, profilePassword || undefined, currentPassword || undefined);
             setProfileSuccess('Profile updated successfully!');
             setProfilePassword('');
+            setCurrentPassword('');
             setTimeout(() => {
                 setIsProfileModalOpen(false);
                 setProfileSuccess('');
-            }, 1500);
+            }, 2000);
         } catch (err) {
             setProfileError(err.response?.data?.message || 'Failed to update profile');
         } finally {
@@ -187,6 +189,19 @@ export default function Dashboard() {
                                         className="w-full bg-[#0B0E14] border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors"
                                     />
                                 </div>
+                                {profilePassword && (
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-400 mb-1">Current Password (required for change)</label>
+                                        <input 
+                                            type="password" 
+                                            placeholder="Enter current password"
+                                            value={currentPassword}
+                                            onChange={(e) => setCurrentPassword(e.target.value)}
+                                            className="w-full bg-[#0B0E14] border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors"
+                                            required
+                                        />
+                                    </div>
+                                )}
 
                                 {profileError && <p className="text-red-400 text-sm">{profileError}</p>}
                                 {profileSuccess && <p className="text-green-400 text-sm">{profileSuccess}</p>}

@@ -5,11 +5,13 @@ import jwt from 'jsonwebtoken';
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET;
 
-if (!JWT_SECRET) {
-    throw new Error('FATAL: JWT_SECRET environment variable is not set. Server cannot start.');
+const PLACEHOLDERS = ['replace_with_a_long_random_secret', 'replace_with_a_different_long_random_secret'];
+
+if (!JWT_SECRET || PLACEHOLDERS.includes(JWT_SECRET)) {
+    throw new Error('FATAL: JWT_SECRET missing or left as placeholder.');
 }
-if (!JWT_REFRESH_SECRET) {
-    throw new Error('FATAL: JWT_REFRESH_SECRET environment variable is not set. Server cannot start.');
+if (!JWT_REFRESH_SECRET || PLACEHOLDERS.includes(JWT_REFRESH_SECRET)) {
+    throw new Error('FATAL: JWT_REFRESH_SECRET missing or left as placeholder.');
 }
 
 export const generateToken = (id) => {

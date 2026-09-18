@@ -36,7 +36,6 @@ export const register = async (req, res, next) => {
         res.cookie('jwt', token, ACCESS_COOKIE_OPTS);
         res.cookie('refreshToken', refreshToken, REFRESH_COOKIE_OPTS);
 
-        // Fix #6: Do NOT return the raw token in the response body.
         // Tokens live exclusively in httpOnly cookies to prevent XSS-based theft.
         res.status(201).json({
             success: true,
@@ -66,7 +65,6 @@ export const login = async (req, res, next) => {
         res.cookie('jwt', token, ACCESS_COOKIE_OPTS);
         res.cookie('refreshToken', refreshToken, REFRESH_COOKIE_OPTS);
 
-        // Fix #6: Token only in cookie, not in JSON body.
         res.status(200).json({
             success: true,
             user: { id: user._id, name: user.name, email: user.email },
@@ -104,9 +102,15 @@ export const refreshAccessToken = async (req, res, next) => {
             return res.status(401).json({ success: false, message: 'Refresh token reuse detected. Please log in again.' });
         }
 
-        // 3. Issue a fresh access token
+        // 3. Issue a fresh access token and a fresh refresh token (rotation)
         const newAccessToken = generateToken(user._id);
+        const newRefreshToken = generateRefreshToken(user._id);
+
+        user.refreshToken = newRefreshToken;
+        await user.save();
+
         res.cookie('jwt', newAccessToken, ACCESS_COOKIE_OPTS);
+        res.cookie('refreshToken', newRefreshToken, REFRESH_COOKIE_OPTS);
 
         res.status(200).json({ success: true, message: 'Access token refreshed' });
     } catch (error) {
@@ -136,7 +140,7 @@ export const logout = async (req, res, next) => {
 // ─── Update Profile ───────────────────────────────────────────────────────────
 export const updateProfile = async (req, res, next) => {
     try {
-        const { name, password } = req.body;
+        const { name, password, currentPassword } = req.body;
         const user = await User.findById(req.user.id);
         
         if (!user) {
@@ -144,7 +148,12 @@ export const updateProfile = async (req, res, next) => {
         }
 
         if (name) user.name = name;
-        if (password) user.password = password; // Will be hashed by pre-save hook
+        if (password) {
+            if (!(await user.comparePassword(currentPassword || ''))) {
+                return res.status(401).json({ success: false, message: 'Current password is incorrect' });
+            }
+            user.password = password; 
+        }
 
         await user.save();
 

@@ -25,14 +25,14 @@ const loginSchema = z.object({
 const updateProfileSchema = z.object({
     body: z.object({
         name: z.string().min(2, "Name must be at least 2 characters").optional(),
-        password: z.string().min(6, "Password must be at least 6 characters").optional()
+        password: z.string().min(6, "Password must be at least 6 characters").optional(),
+        currentPassword: z.string().optional()
     })
 });
 
 router.post('/register', authLimiter, validate(registerSchema), register);
 router.post('/login', authLimiter, validate(loginSchema), login);
 
-// Fix #5: Refresh token endpoint — reads the refreshToken cookie, issues a new access token.
 // Rate-limited to prevent brute-force against stored tokens.
 router.post('/refresh', authLimiter, refreshAccessToken);
 

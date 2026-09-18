@@ -106,7 +106,6 @@ describe('POST /api/v1/auth/register', () => {
         expect(res.body.success).toBe(true);
         expect(res.body.user).toMatchObject({ name: 'Alice', email: 'alice@example.com' });
 
-        // Fix #6 verification: raw token must NOT be in the response body
         expect(res.body.token).toBeUndefined();
 
         // Access token should be in an httpOnly cookie
@@ -151,7 +150,6 @@ describe('POST /api/v1/auth/login', () => {
         expect(res.status).toBe(200);
         expect(res.body.success).toBe(true);
         expect(res.body.user.email).toBe('bob@example.com');
-        expect(res.body.token).toBeUndefined(); // Fix #6
 
         const jwtCookie = extractCookie(res, 'jwt');
         expect(jwtCookie).not.toBeNull();

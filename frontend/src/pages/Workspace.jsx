@@ -17,7 +17,6 @@ export default function Workspace() {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
 
-    // Fix #12: socket as useRef — module-level singletons are a React anti-pattern.
     // A ref keeps the socket instance stable across renders without causing re-renders.
     const socketRef = useRef(null);
 
@@ -30,7 +29,7 @@ export default function Workspace() {
     const [lastModified, setLastModified] = useState({ by: null, at: null });
     
     // Editor refs
-    const ydocRef = useRef(new Y.Doc());
+    const ydocRef = useRef(null);
     const bindingRef = useRef(null);
     const editorRef = useRef(null);
     const monacoRef = useRef(null);
@@ -121,18 +120,17 @@ export default function Workspace() {
             return;
         }
 
-        // Fix #12: create socket inside the effect so it's scoped to this mount.
         const socket = io(BACKEND_URL, {
             autoConnect: false,
             withCredentials: true, // send the httpOnly jwt cookie for socket auth
         });
         socketRef.current = socket;
+        ydocRef.current = new Y.Doc();
 
         socket.connect();
 
         socket.on('connect', () => {
             setConnected(true);
-            // Fix #8: server reads identity from the verified JWT cookie.
             // We only send roomId now — userName/userId from client is ignored by backend.
             socket.emit('join', { roomId });
         });
@@ -192,11 +190,12 @@ export default function Workspace() {
         });
 
         return () => {
-            // Fix #11: remove all listeners BEFORE disconnect.
             // Without socket.off(), React StrictMode double-invocation stacks listeners.
             socket.emit('leaveRoom');
             socket.off();
             socket.disconnect();
+            bindingRef.current?.destroy();
+            ydocRef.current?.destroy();
             socketRef.current = null;
         };
     }, [roomId, user, navigate]);
@@ -242,7 +241,6 @@ export default function Workspace() {
         });
 
         editor.onDidChangeCursorPosition((e) => {
-            // Fix #8: server derives userId/userName from socket.user, so we only send position
             socketRef.current?.emit('cursorChange', { roomId, position: e.position });
         });
     };
