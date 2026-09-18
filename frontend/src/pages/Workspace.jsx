@@ -133,7 +133,18 @@ export default function Workspace() {
         socket.on('disconnect', () => setConnected(false));
         socket.on('connect_error', () => setConnected(false));
         
-        socket.on('userJoined', (usersList) => setUsers(usersList));
+        socket.on('userJoined', (usersList) => {
+            setUsers(usersList);
+            const activeUserIds = new Set(usersList.map(u => u.id));
+            let cursorsChanged = false;
+            for (const id in remoteCursorsRef.current) {
+                if (!activeUserIds.has(id)) {
+                    delete remoteCursorsRef.current[id];
+                    cursorsChanged = true;
+                }
+            }
+            if (cursorsChanged) updateDecorations();
+        });
         
         socket.on('yjs-sync', (state) => {
             Y.applyUpdate(ydocRef.current, new Uint8Array(state));
