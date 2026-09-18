@@ -78,6 +78,7 @@ app.use(cookieParser());
 
 // Setup WebSockets (Fix #8: auth middleware is set up inside setupSocketHandlers)
 setupSocketHandlers(io);
+app.set('io', io);
 
 // API Routes
 app.use('/api/v1/auth', authRoutes);
