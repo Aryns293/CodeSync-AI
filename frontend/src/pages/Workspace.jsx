@@ -147,7 +147,7 @@ export default function Workspace() {
         });
         
         socket.on('yjs-sync', (state) => {
-            Y.applyUpdate(ydocRef.current, new Uint8Array(state));
+            Y.applyUpdate(ydocRef.current, new Uint8Array(state), 'remote');
         });
 
         socket.on('yjs-update', ({ update }) => {
