@@ -7,10 +7,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Play, Copy, Check, Users, Sparkles, LogOut, Loader2, Maximize2, Minimize2, Terminal, DoorOpen, AlertTriangle, Menu, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import clsx from 'clsx';
-import { runBeforeCrdtBenchmark } from '../utils/bandwidthBenchmark';
-
-// Expose benchmark to window for easy execution in DevTools console
-window.runBenchmark = runBeforeCrdtBenchmark;
+import * as Y from 'yjs';
+import { MonacoBinding } from 'y-monaco';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || '';
 
@@ -25,7 +23,6 @@ export default function Workspace() {
 
     const [connected, setConnected] = useState(false);
     const [language, setLanguage] = useState('cpp');
-    const [code, setCode] = useState('// Start coding here...');
     const [output, setOutput] = useState('');
     const [stdin, setStdin] = useState('');
     const [users, setUsers] = useState([]);
@@ -33,6 +30,8 @@ export default function Workspace() {
     const [lastModified, setLastModified] = useState({ by: null, at: null });
     
     // Editor refs
+    const ydocRef = useRef(new Y.Doc());
+    const bindingRef = useRef(null);
     const editorRef = useRef(null);
     const monacoRef = useRef(null);
     const decorationsRef = useRef([]);
@@ -143,20 +142,17 @@ export default function Workspace() {
         
         socket.on('userJoined', (usersList) => setUsers(usersList));
         
+        socket.on('yjs-sync', (state) => {
+            Y.applyUpdate(ydocRef.current, new Uint8Array(state));
+        });
+
+        socket.on('yjs-update', ({ update }) => {
+            Y.applyUpdate(ydocRef.current, new Uint8Array(update), 'remote');
+        });
+
         socket.on('codeUpdate', (data) => {
-            if (typeof data === 'string') {
-                setCode(data);
-            } else {
-                setCode(data.code);
-                if (data.lastModifiedBy && data.lastModifiedAt) {
-                    // --- TEMPORARY METRIC CALCULATION ---
-                    const sentTime = new Date(data.lastModifiedAt).getTime();
-                    const receivedTime = Date.now();
-                    console.log(`🔥 Real-world Latency: ${receivedTime - sentTime}ms`);
-                    // ------------------------------------
-                    
-                    setLastModified({ by: data.lastModifiedBy, at: data.lastModifiedAt });
-                }
+            if (data.lastModifiedBy && data.lastModifiedAt) {
+                setLastModified({ by: data.lastModifiedBy, at: data.lastModifiedAt });
             }
         });
         
@@ -230,28 +226,25 @@ export default function Workspace() {
         editorRef.current = editor;
         monacoRef.current = monaco;
         
+        // Bind Yjs to Monaco
+        const ytext = ydocRef.current.getText('code');
+        bindingRef.current = new MonacoBinding(ytext, editor.getModel(), new Set([editor]));
+
+        ydocRef.current.on('update', (update, origin) => {
+            if (origin !== 'remote') {
+                const timestamp = new Date().toISOString();
+                setLastModified({ by: user.name, at: timestamp });
+                
+                // Array.from(update) converts Uint8Array to standard array for socket transmission
+                socketRef.current?.emit('yjs-update', { roomId, update: Array.from(update), timestamp });
+                socketRef.current?.emit('typing', { roomId });
+            }
+        });
+
         editor.onDidChangeCursorPosition((e) => {
             // Fix #8: server derives userId/userName from socket.user, so we only send position
             socketRef.current?.emit('cursorChange', { roomId, position: e.position });
         });
-    };
-
-    const handleCodeChange = (newCode) => {
-        setCode(newCode);
-        const timestamp = new Date().toISOString();
-        const payload = { roomId, code: newCode, timestamp };
-        const bytes = new TextEncoder().encode(JSON.stringify(payload)).length;
-        
-        console.log("Code size:", newCode.length, "chars");
-        console.log("Payload size:", bytes, "bytes");
-        
-        setLastModified({ by: user.name, at: timestamp });
-        
-        const t0 = Date.now();
-        socketRef.current?.emit('codeChange', payload, () => {
-            console.log(`ACK RTT: ${Date.now() - t0}ms`);
-        });
-        socketRef.current?.emit('typing', { roomId });
     };
 
     const handleLanguageChange = (e) => {
@@ -481,8 +474,6 @@ export default function Workspace() {
                             height="100%"
                             language={language === 'python3' ? 'python' : language}
                             theme="vs-dark"
-                            value={code}
-                            onChange={handleCodeChange}
                             onMount={handleEditorMount}
                             options={{
                                 minimap: { enabled: false },

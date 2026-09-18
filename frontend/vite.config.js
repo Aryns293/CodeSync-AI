@@ -8,6 +8,11 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
+  resolve: {
+    alias: {
+      'monaco-editor/esm/vs/editor/editor.api.js': 'monaco-editor'
+    }
+  },
   server: {
     proxy: {
       '/api': {

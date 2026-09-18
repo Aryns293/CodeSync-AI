@@ -3,9 +3,11 @@ import { runCode } from './execution.service.js';
 import { generateReview } from './gemini.service.js';
 import { Room } from '../models/Room.model.js';
 import { User } from '../models/User.model.js';
+import * as Y from 'yjs';
 
 const rooms = new Map();
 const roomData = new Map();
+const ydocs = new Map();
 const lastAction = new Map();
 const saveTimeouts = new Map();
 
@@ -23,6 +25,7 @@ function cleanupRoomIfEmpty(roomId) {
 
     rooms.delete(roomId);
     roomData.delete(roomId);
+    ydocs.delete(roomId);
 }
 
 function scheduleDbSave(roomId) {
@@ -33,20 +36,26 @@ function scheduleDbSave(roomId) {
     saveTimeouts.set(roomId, setTimeout(async () => {
         saveTimeouts.delete(roomId);
         const data = roomData.get(roomId);
-        if (data) {
+        const ydoc = ydocs.get(roomId);
+        
+        if (data || ydoc) {
             try {
-                await Room.findOneAndUpdate(
-                    { roomId },
-                    { 
-                        $set: {
-                            ...(data.code !== undefined && { code: data.code }),
-                            ...(data.language !== undefined && { language: data.language }),
-                            ...(data.lastModifiedBy !== undefined && { lastModifiedBy: data.lastModifiedBy }),
-                            ...(data.lastModifiedAt !== undefined && { lastModifiedAt: data.lastModifiedAt })
-                        }
-                    },
-                    { upsert: true }
-                );
+                const updateQuery = { $set: {} };
+                
+                if (data) {
+                    if (data.language !== undefined) updateQuery.$set.language = data.language;
+                    if (data.lastModifiedBy !== undefined) updateQuery.$set.lastModifiedBy = data.lastModifiedBy;
+                    if (data.lastModifiedAt !== undefined) updateQuery.$set.lastModifiedAt = data.lastModifiedAt;
+                }
+                
+                if (ydoc) {
+                    updateQuery.$set.ydocState = Buffer.from(Y.encodeStateAsUpdate(ydoc));
+                    updateQuery.$set.code = ydoc.getText('code').toString();
+                }
+
+                if (Object.keys(updateQuery.$set).length > 0) {
+                    await Room.findOneAndUpdate({ roomId }, updateQuery, { upsert: true });
+                }
             } catch (error) {
                 console.error(`Error saving room ${roomId} to DB:`, error);
             }
@@ -138,11 +147,11 @@ export const setupSocketHandlers = (io) => {
 
             // Fetch from DB if not in memory
             let roomInfo = roomData.get(roomId);
+            let dbRoom = null;
             if (!roomInfo) {
-                const dbRoom = await Room.findOne({ roomId });
+                dbRoom = await Room.findOne({ roomId });
                 if (dbRoom) {
                     roomInfo = {
-                        code: dbRoom.code,
                         language: dbRoom.language,
                         lastModifiedBy: dbRoom.lastModifiedBy,
                         lastModifiedAt: dbRoom.lastModifiedAt,
@@ -150,10 +159,28 @@ export const setupSocketHandlers = (io) => {
                     roomData.set(roomId, roomInfo);
                 }
             }
+            
+            // Hydrate Y.Doc if not present in memory
+            if (!ydocs.has(roomId)) {
+                const ydoc = new Y.Doc();
+                if (dbRoom && dbRoom.ydocState) {
+                    Y.applyUpdate(ydoc, new Uint8Array(dbRoom.ydocState));
+                } else if (dbRoom && dbRoom.code) {
+                    // Backwards compatibility for existing old rooms
+                    ydoc.getText('code').insert(0, dbRoom.code);
+                } else {
+                    ydoc.getText('code').insert(0, '// start coding here...');
+                }
+                ydocs.set(roomId, ydoc);
+            }
 
-            if (roomInfo?.code) {
+            // Sync CRDT state to the joining client
+            const ydoc = ydocs.get(roomId);
+            const stateUpdate = Y.encodeStateAsUpdate(ydoc);
+            socket.emit('yjs-sync', stateUpdate);
+
+            if (roomInfo) {
                 socket.emit('codeUpdate', { 
-                    code: roomInfo.code,
                     lastModifiedBy: roomInfo.lastModifiedBy,
                     lastModifiedAt: roomInfo.lastModifiedAt,
                 });
@@ -161,13 +188,20 @@ export const setupSocketHandlers = (io) => {
             if (roomInfo?.language) socket.emit('languageUpdate', roomInfo.language);
         });
 
-        socket.on('codeChange', async ({ roomId, code, timestamp }, callback) => {
-            // Fix #8: userName comes from socket.user, not client payload
+        socket.on('yjs-update', ({ roomId, update, timestamp }, callback) => {
+            const doc = ydocs.get(roomId);
+            if (!doc) return;
+
+            // Apply binary update to authoritative server doc
+            Y.applyUpdate(doc, new Uint8Array(update));
+            
+            // Rebroadcast to everyone else in the room
+            socket.to(roomId).emit('yjs-update', { update });
+
             const userName = socket.user.name;
-            socket.to(roomId).emit('codeUpdate', { code, lastModifiedBy: userName, lastModifiedAt: timestamp });
+            socket.to(roomId).emit('codeUpdate', { lastModifiedBy: userName, lastModifiedAt: timestamp });
             
             if (!roomData.has(roomId)) roomData.set(roomId, {});
-            roomData.get(roomId).code = code;
             roomData.get(roomId).lastModifiedBy = userName;
             roomData.get(roomId).lastModifiedAt = timestamp;
 
@@ -213,8 +247,9 @@ export const setupSocketHandlers = (io) => {
             }
 
             const roomInfo = roomData.get(roomId);
-            if (!roomInfo) return;
-            const code = roomInfo.code || '';
+            const doc = ydocs.get(roomId);
+            if (!roomInfo || !doc) return;
+            const code = doc.getText('code').toString();
             const language = roomInfo.language || 'cpp';
 
             const result = await runCode({ language, code, stdin, roomId, userId: socket.user.id });
@@ -229,8 +264,9 @@ export const setupSocketHandlers = (io) => {
 
             try {
                 const roomInfo = roomData.get(roomId);
-                if (!roomInfo) return;
-                const code = roomInfo.code || '';
+                const doc = ydocs.get(roomId);
+                if (!roomInfo || !doc) return;
+                const code = doc.getText('code').toString();
                 const language = roomInfo.language || 'cpp';
                 
                 const text = await generateReview(code, language);
