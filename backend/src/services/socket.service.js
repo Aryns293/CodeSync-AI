@@ -12,7 +12,6 @@ const lastAction = new Map();
 const saveTimeouts = new Map();
 
 // ─── Cleanup when a room becomes empty ────────────────────────────────────────
-// Fix #13: Without this, rooms/roomData Maps grow forever on a long-running server.
 function cleanupRoomIfEmpty(roomId) {
     const roomUsers = rooms.get(roomId);
     if (!roomUsers || roomUsers.size > 0) return;
@@ -124,7 +123,6 @@ export const setupSocketHandlers = (io) => {
         let currentRoom = null;
 
         socket.on('join', async ({ roomId }) => {
-            // Fix #8: user identity comes from socket.user (server-verified), not the client payload.
             const user = socket.user;
 
             if (currentRoom) {
@@ -189,6 +187,7 @@ export const setupSocketHandlers = (io) => {
         });
 
         socket.on('yjs-update', ({ roomId, update, timestamp }, callback) => {
+            if (roomId !== currentRoom) return;
             const doc = ydocs.get(roomId);
             if (!doc) return;
 
@@ -218,10 +217,12 @@ export const setupSocketHandlers = (io) => {
         });
 
         socket.on('typing', ({ roomId }) => {
+            if (roomId !== currentRoom) return;
             socket.to(roomId).emit('userTyping', { userName: socket.user.name, userId: socket.user.id });
         });
 
         socket.on('cursorChange', ({ roomId, position }) => {
+            if (roomId !== currentRoom) return;
             socket.to(roomId).emit('cursorUpdate', {
                 userId: socket.user.id,
                 userName: socket.user.name,
@@ -230,6 +231,7 @@ export const setupSocketHandlers = (io) => {
         });
 
         socket.on('languageChange', ({ roomId, language }) => {
+            if (roomId !== currentRoom) return;
             io.to(roomId).emit('languageUpdate', language);
             if (!roomData.has(roomId)) roomData.set(roomId, {});
             roomData.get(roomId).language = language;
@@ -237,6 +239,7 @@ export const setupSocketHandlers = (io) => {
         });
 
         socket.on('compileCode', async ({ roomId, stdin }) => {
+            if (roomId !== currentRoom) return;
             if (!rooms.has(roomId)) return;
 
             if (throttled(socket, 'compile', 3000)) {
@@ -253,10 +256,11 @@ export const setupSocketHandlers = (io) => {
             const language = roomInfo.language || 'cpp';
 
             const result = await runCode({ language, code, stdin, roomId, userId: socket.user.id });
-            socket.emit('codeResponse', { run: result });
+            io.to(roomId).emit('codeResponse', { run: result });
         });
 
         socket.on('getAIReview', async ({ roomId }) => {
+            if (roomId !== currentRoom) return;
             if (throttled(socket, 'review', 8000)) {
                 io.to(roomId).emit('AIReview', 'Please wait a few seconds before requesting another review.');
                 return;

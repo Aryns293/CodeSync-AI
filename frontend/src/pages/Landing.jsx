@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Code2, Users, Layers, Cloud, Sparkles, Share2, MousePointer2 } from 'lucide-react';

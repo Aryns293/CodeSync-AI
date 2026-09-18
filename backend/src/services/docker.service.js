@@ -120,7 +120,7 @@ export async function executeInSandbox({ language, code, stdin }) {
     SANDBOX_IMAGE,
     "bash",
     "-c",
-    runner.cmd,
+    `ulimit -f 65536; ${runner.cmd}`,
   ];
 
   return new Promise((resolve) => {
@@ -128,6 +128,7 @@ export async function executeInSandbox({ language, code, stdin }) {
     let stdout = "";
     let stderr = "";
     let settled = false;
+    const MAX_OUTPUT = 100_000; // chars
 
     const finish = (result) => {
       if (settled) return;
@@ -155,12 +156,12 @@ export async function executeInSandbox({ language, code, stdin }) {
       finish({ output: `Error: execution timed out after ${EXEC_TIMEOUT_MS / 1000}s` });
     }, EXEC_TIMEOUT_MS);
 
-    child.stdout.on("data", (d) => (stdout += d));
-    child.stderr.on("data", (d) => (stderr += d));
+    child.stdout.on("data", (d) => { if (stdout.length < MAX_OUTPUT) stdout += d; });
+    child.stderr.on("data", (d) => { if (stderr.length < MAX_OUTPUT) stderr += d; });
 
     child.on("error", (err) => {
       // Most common cause: docker isn't installed / daemon isn't reachable on this host.
-      finish({ output: `Error: sandbox unavailable (${err.message})` });
+      finish({ output: `Error: sandbox unavailable (${err.message})`, sandboxUnavailable: true });
     });
 
     child.on("close", (exitCode) => {

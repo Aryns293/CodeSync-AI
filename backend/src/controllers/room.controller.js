@@ -3,7 +3,6 @@ import { randomUUID } from 'crypto';
 
 export const createRoom = async (req, res, next) => {
     try {
-        // Fix #9: Math.random() produces 6-digit IDs (~900K possibilities) — trivially enumerable.
         // crypto.randomUUID() generates a 128-bit cryptographically random UUID (v4).
         const roomId = randomUUID();
         const room = await Room.create({

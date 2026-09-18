@@ -19,7 +19,7 @@ const api = axios.create({
 // `isRefreshing` stays true forever, the redirect to /login never fires, and
 // every subsequent request silently queues and hangs with no user feedback.
 //
-// Fix: use a plain axios instance with no interceptors attached. A 401 from
+// Use a plain axios instance with no interceptors attached. A 401 from
 // this call falls straight through to the catch block as intended.
 const refreshClient = axios.create({
     baseURL: BASE_URL,
