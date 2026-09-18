@@ -191,20 +191,26 @@ export const setupSocketHandlers = (io) => {
             const doc = ydocs.get(roomId);
             if (!doc) return;
 
-            // Apply binary update to authoritative server doc
-            Y.applyUpdate(doc, new Uint8Array(update));
-            
-            // Rebroadcast to everyone else in the room
-            socket.to(roomId).emit('yjs-update', { update });
-
-            const userName = socket.user.name;
-            socket.to(roomId).emit('codeUpdate', { lastModifiedBy: userName, lastModifiedAt: timestamp });
-            
-            if (!roomData.has(roomId)) roomData.set(roomId, {});
-            roomData.get(roomId).lastModifiedBy = userName;
-            roomData.get(roomId).lastModifiedAt = timestamp;
-
-            scheduleDbSave(roomId);
+            try {
+                // Apply binary update to authoritative server doc
+                Y.applyUpdate(doc, new Uint8Array(update));
+                
+                // Rebroadcast to everyone else in the room
+                socket.to(roomId).emit('yjs-update', { update });
+    
+                const userName = socket.user.name;
+                socket.to(roomId).emit('codeUpdate', { lastModifiedBy: userName, lastModifiedAt: timestamp });
+                
+                if (!roomData.has(roomId)) roomData.set(roomId, {});
+                roomData.get(roomId).lastModifiedBy = userName;
+                roomData.get(roomId).lastModifiedAt = timestamp;
+    
+                scheduleDbSave(roomId);
+            } catch (error) {
+                console.error(`[Yjs] Failed to apply update from socket ${socket.id} in room ${roomId}:`, error.message);
+                // Optionally emit an error back to the offending client
+                socket.emit('error', 'Malformed document update received');
+            }
             if (typeof callback === 'function') callback();
         });
 
