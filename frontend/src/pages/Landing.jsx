@@ -117,12 +117,12 @@ export default function Landing() {
                             {
                                 icon: <Share2 className="text-purple-400" size={24} />,
                                 title: "Easy Sharing",
-                                desc: "Share your workspace instantly with a simple room ID or invite link."
+                                desc: "Share your workspace instantly with a room ID."
                             },
                             {
                                 icon: <Layers className="text-rose-400" size={24} />,
                                 title: "Multiple Languages",
-                                desc: "Support for Python, JavaScript, Java, C++, and more out of the box."
+                                desc: "Support for Python 3, JavaScript, Java, and C++."
                             },
                             {
                                 icon: <Cloud className="text-sky-400" size={24} />,

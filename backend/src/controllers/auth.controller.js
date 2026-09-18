@@ -76,7 +76,7 @@ export const login = async (req, res, next) => {
     }
 };
 
-// ─── Refresh Access Token (Fix #5) ────────────────────────────────────────────
+// ─── Refresh Access Token ─────────────────────────────────────────────────────
 export const refreshAccessToken = async (req, res, next) => {
     try {
         const incomingRefreshToken = req.cookies?.refreshToken;

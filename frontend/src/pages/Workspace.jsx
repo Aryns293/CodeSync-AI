@@ -149,6 +149,13 @@ export default function Workspace() {
 
         socket.on('disconnect', () => setConnected(false));
         socket.on('connect_error', () => setConnected(false));
+        socket.on('roomError', ({ message }) => {
+            setOutput(message || 'Room not found');
+            navigate('/dashboard');
+        });
+        socket.on('socketValidationError', ({ message }) => {
+            setOutput(message || 'Invalid collaboration event');
+        });
         
         socket.on('userJoined', (usersList) => {
             setUsers(usersList);

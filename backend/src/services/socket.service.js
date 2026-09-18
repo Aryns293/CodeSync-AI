@@ -4,7 +4,8 @@ import { generateReview } from './gemini.service.js';
 import { Room } from '../models/Room.model.js';
 import { User } from '../models/User.model.js';
 import * as Y from 'yjs';
-import cookie from 'cookie';
+import * as cookie from 'cookie';
+import { z } from 'zod';
 
 const rooms = new Map();
 const roomData = new Map();
@@ -13,16 +14,75 @@ const lastAction = new Map();
 const saveTimeouts = new Map();
 const roomCompileTime = new Map();
 
-// ─── Cleanup when a room becomes empty ────────────────────────────────────────
-function cleanupRoomIfEmpty(roomId) {
+const languageSchema = z.enum(['cpp', 'python3', 'java', 'javascript']);
+const roomPayloadSchema = z.object({ roomId: z.string().uuid() });
+const joinPayloadSchema = roomPayloadSchema;
+const yjsUpdatePayloadSchema = roomPayloadSchema.extend({
+    update: z.any().refine(
+        (value) => value instanceof ArrayBuffer || ArrayBuffer.isView(value) || Array.isArray(value),
+        'Invalid Yjs update payload'
+    ),
+    timestamp: z.string().datetime().optional(),
+});
+const cursorPayloadSchema = roomPayloadSchema.extend({
+    position: z.object({
+        lineNumber: z.number().int().positive(),
+        column: z.number().int().positive(),
+    }),
+});
+const languagePayloadSchema = roomPayloadSchema.extend({ language: languageSchema });
+const compilePayloadSchema = roomPayloadSchema.extend({
+    stdin: z.string().max(20_000).optional(),
+});
+
+function parseSocketPayload(socket, schema, payload) {
+    const parsed = schema.safeParse(payload);
+    if (!parsed.success) {
+        socket.emit('socketValidationError', {
+            message: 'Invalid socket event payload',
+            errors: parsed.error.issues,
+        });
+        return null;
+    }
+    return parsed.data;
+}
+
+async function persistRoomState(roomId, data = roomData.get(roomId), ydoc = ydocs.get(roomId)) {
+    if (!data && !ydoc) return;
+
+    try {
+        const updateQuery = { $set: {} };
+
+        if (data) {
+            if (data.language !== undefined) updateQuery.$set.language = data.language;
+            if (data.lastModifiedBy !== undefined) updateQuery.$set.lastModifiedBy = data.lastModifiedBy;
+            if (data.lastModifiedAt !== undefined) updateQuery.$set.lastModifiedAt = data.lastModifiedAt;
+        }
+
+        if (ydoc) {
+            updateQuery.$set.ydocState = Buffer.from(Y.encodeStateAsUpdate(ydoc));
+            updateQuery.$set.code = ydoc.getText('code').toString();
+        }
+
+        if (Object.keys(updateQuery.$set).length > 0) {
+            await Room.findOneAndUpdate({ roomId }, updateQuery);
+        }
+    } catch (error) {
+        console.error(`Error saving room ${roomId} to DB:`, error);
+    }
+}
+
+// Cleanup when a room becomes empty after flushing its latest in-memory state.
+async function cleanupRoomIfEmpty(roomId) {
     const roomUsers = rooms.get(roomId);
     if (!roomUsers || roomUsers.size > 0) return;
 
-    // Cancel any pending DB save for this room before clearing it
     if (saveTimeouts.has(roomId)) {
         clearTimeout(saveTimeouts.get(roomId));
         saveTimeouts.delete(roomId);
     }
+
+    await persistRoomState(roomId);
 
     rooms.delete(roomId);
     roomData.delete(roomId);
@@ -37,31 +97,7 @@ function scheduleDbSave(roomId) {
     
     saveTimeouts.set(roomId, setTimeout(async () => {
         saveTimeouts.delete(roomId);
-        const data = roomData.get(roomId);
-        const ydoc = ydocs.get(roomId);
-        
-        if (data || ydoc) {
-            try {
-                const updateQuery = { $set: {} };
-                
-                if (data) {
-                    if (data.language !== undefined) updateQuery.$set.language = data.language;
-                    if (data.lastModifiedBy !== undefined) updateQuery.$set.lastModifiedBy = data.lastModifiedBy;
-                    if (data.lastModifiedAt !== undefined) updateQuery.$set.lastModifiedAt = data.lastModifiedAt;
-                }
-                
-                if (ydoc) {
-                    updateQuery.$set.ydocState = Buffer.from(Y.encodeStateAsUpdate(ydoc));
-                    updateQuery.$set.code = ydoc.getText('code').toString();
-                }
-
-                if (Object.keys(updateQuery.$set).length > 0) {
-                    await Room.findOneAndUpdate({ roomId }, updateQuery, { upsert: true });
-                }
-            } catch (error) {
-                console.error(`Error saving room ${roomId} to DB:`, error);
-            }
-        }
+        await persistRoomState(roomId);
     }, 2000));
 }
 
@@ -78,8 +114,8 @@ function throttled(socket, key, cooldownMs) {
     return false;
 }
 
-// ─── Helper: remove a user from a room and notify others ─────────────────────
-function removeUserFromRoom(io, socket, roomId) {
+// Remove a user from a room, notify others, and clean up empty rooms.
+async function removeUserFromRoom(io, socket, roomId) {
     rooms.get(roomId)?.delete(socket.id);
     const usersInRoom = Array.from(
         new Map(
@@ -87,12 +123,11 @@ function removeUserFromRoom(io, socket, roomId) {
         ).values()
     );
     io.to(roomId).emit('userJoined', usersInRoom);
-    cleanupRoomIfEmpty(roomId);
+    await cleanupRoomIfEmpty(roomId);
 }
 
 export const setupSocketHandlers = (io) => {
-    // ─── Fix #8: Socket.IO auth middleware ────────────────────────────────────
-    // Runs before any event handler. Verifies the JWT from the httpOnly cookie.
+    // Socket.IO auth middleware runs before any event handler and verifies the JWT from the httpOnly cookie.
     // Unauthenticated connections are rejected here before they can touch any room data.
     io.use(async (socket, next) => {
         try {
@@ -126,12 +161,30 @@ export const setupSocketHandlers = (io) => {
 
         let currentRoom = null;
 
-        socket.on('join', async ({ roomId }) => {
+        socket.on('join', async (payload) => {
+            const parsed = parseSocketPayload(socket, joinPayloadSchema, payload);
+            if (!parsed) return;
+            const { roomId } = parsed;
             const user = socket.user;
+
+            let roomInfo = roomData.get(roomId);
+            const dbRoom = await Room.findOne({ roomId });
+            if (!dbRoom) {
+                socket.emit('roomError', { message: 'Room not found' });
+                return;
+            }
+            if (!roomInfo) {
+                roomInfo = {
+                    language: dbRoom.language,
+                    lastModifiedBy: dbRoom.lastModifiedBy,
+                    lastModifiedAt: dbRoom.lastModifiedAt,
+                };
+                roomData.set(roomId, roomInfo);
+            }
 
             if (currentRoom) {
                 socket.leave(currentRoom);
-                removeUserFromRoom(io, socket, currentRoom);
+                await removeUserFromRoom(io, socket, currentRoom);
             }
 
             currentRoom = roomId;
@@ -147,27 +200,12 @@ export const setupSocketHandlers = (io) => {
             );
             io.to(roomId).emit('userJoined', usersInRoom);
 
-            // Fetch from DB if not in memory
-            let roomInfo = roomData.get(roomId);
-            let dbRoom = null;
-            if (!roomInfo) {
-                dbRoom = await Room.findOne({ roomId });
-                if (dbRoom) {
-                    roomInfo = {
-                        language: dbRoom.language,
-                        lastModifiedBy: dbRoom.lastModifiedBy,
-                        lastModifiedAt: dbRoom.lastModifiedAt,
-                    };
-                    roomData.set(roomId, roomInfo);
-                }
-            }
-            
             // Hydrate Y.Doc if not present in memory
             if (!ydocs.has(roomId)) {
                 const ydoc = new Y.Doc();
-                if (dbRoom && dbRoom.ydocState) {
+                if (dbRoom.ydocState) {
                     Y.applyUpdate(ydoc, new Uint8Array(dbRoom.ydocState));
-                } else if (dbRoom && dbRoom.code) {
+                } else if (dbRoom.code) {
                     // Backwards compatibility for existing old rooms
                     ydoc.getText('code').insert(0, dbRoom.code);
                 } else {
@@ -190,7 +228,10 @@ export const setupSocketHandlers = (io) => {
             if (roomInfo?.language) socket.emit('languageUpdate', roomInfo.language);
         });
 
-        socket.on('yjs-update', ({ roomId, update, timestamp }, callback) => {
+        socket.on('yjs-update', (payload, callback) => {
+            const parsed = parseSocketPayload(socket, yjsUpdatePayloadSchema, payload);
+            if (!parsed) return;
+            const { roomId, update, timestamp } = parsed;
             if (roomId !== currentRoom) return;
             const doc = ydocs.get(roomId);
             if (!doc) return;
@@ -203,11 +244,12 @@ export const setupSocketHandlers = (io) => {
                 socket.to(roomId).emit('yjs-update', { update });
     
                 const userName = socket.user.name;
-                socket.to(roomId).emit('codeUpdate', { lastModifiedBy: userName, lastModifiedAt: timestamp });
+                const modifiedAt = timestamp || new Date().toISOString();
+                socket.to(roomId).emit('codeUpdate', { lastModifiedBy: userName, lastModifiedAt: modifiedAt });
                 
                 if (!roomData.has(roomId)) roomData.set(roomId, {});
                 roomData.get(roomId).lastModifiedBy = userName;
-                roomData.get(roomId).lastModifiedAt = timestamp;
+                roomData.get(roomId).lastModifiedAt = modifiedAt;
     
                 scheduleDbSave(roomId);
             } catch (error) {
@@ -221,17 +263,23 @@ export const setupSocketHandlers = (io) => {
         socket.on('leaveRoom', () => {
             if (currentRoom) {
                 socket.leave(currentRoom);
-                removeUserFromRoom(io, socket, currentRoom);
+                void removeUserFromRoom(io, socket, currentRoom);
                 currentRoom = null;
             }
         });
 
-        socket.on('typing', ({ roomId }) => {
+        socket.on('typing', (payload) => {
+            const parsed = parseSocketPayload(socket, roomPayloadSchema, payload);
+            if (!parsed) return;
+            const { roomId } = parsed;
             if (roomId !== currentRoom) return;
             socket.to(roomId).emit('userTyping', { userName: socket.user.name, userId: socket.user.id });
         });
 
-        socket.on('cursorChange', ({ roomId, position }) => {
+        socket.on('cursorChange', (payload) => {
+            const parsed = parseSocketPayload(socket, cursorPayloadSchema, payload);
+            if (!parsed) return;
+            const { roomId, position } = parsed;
             if (roomId !== currentRoom) return;
             socket.to(roomId).emit('cursorUpdate', {
                 userId: socket.user.id,
@@ -240,7 +288,10 @@ export const setupSocketHandlers = (io) => {
             });
         });
 
-        socket.on('languageChange', ({ roomId, language }) => {
+        socket.on('languageChange', (payload) => {
+            const parsed = parseSocketPayload(socket, languagePayloadSchema, payload);
+            if (!parsed) return;
+            const { roomId, language } = parsed;
             if (roomId !== currentRoom) return;
             io.to(roomId).emit('languageUpdate', language);
             if (!roomData.has(roomId)) roomData.set(roomId, {});
@@ -248,7 +299,10 @@ export const setupSocketHandlers = (io) => {
             scheduleDbSave(roomId);
         });
 
-        socket.on('compileCode', async ({ roomId, stdin }) => {
+        socket.on('compileCode', async (payload) => {
+            const parsed = parseSocketPayload(socket, compilePayloadSchema, payload);
+            if (!parsed) return;
+            const { roomId, stdin } = parsed;
             if (roomId !== currentRoom) return;
             if (!rooms.has(roomId)) return;
 
@@ -276,7 +330,10 @@ export const setupSocketHandlers = (io) => {
             io.to(roomId).emit('codeResponse', { run: result });
         });
 
-        socket.on('getAIReview', async ({ roomId }) => {
+        socket.on('getAIReview', async (payload) => {
+            const parsed = parseSocketPayload(socket, roomPayloadSchema, payload);
+            if (!parsed) return;
+            const { roomId } = parsed;
             if (roomId !== currentRoom) return;
             if (throttled(socket, 'review', 8000)) {
                 io.to(roomId).emit('AIReview', 'Please wait a few seconds before requesting another review.');
@@ -312,9 +369,9 @@ export const setupSocketHandlers = (io) => {
             }
         });
 
-        socket.on('disconnect', () => {
+        socket.on('disconnect', async () => {
             if (currentRoom) {
-                removeUserFromRoom(io, socket, currentRoom);
+                await removeUserFromRoom(io, socket, currentRoom);
             }
             lastAction.delete(socket.id);
             console.log('A user disconnected:', socket.user?.name);

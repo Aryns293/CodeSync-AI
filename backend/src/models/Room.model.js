@@ -10,7 +10,7 @@ const roomSchema = new mongoose.Schema({
     owner: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
-        required: false, // Optional for backward compatibility with guests
+        required: false, // Optional for backward compatibility with older room documents
     },
     language: {
         type: String,
