@@ -202,14 +202,11 @@ These are intentional portfolio-scope decisions. Each has a known production-gra
 | **ExecutionLog is write-only** | Every run is logged (code + output, including guests), but nothing reads the collection. 30-day TTL index added to prevent unbounded growth | Build a run-history UI, or drop the model entirely if audit history is not needed |
 | **Room access = UUID = access** | Any authenticated user who knows/guesses the UUID can join and edit — intentional, not an oversight | Add a membership model or owner-only invite system for private rooms |
 
----
-
 # 📈 Future Improvements
 
 - AI review scoring and severity levels
-- Collaborative cursors (Yjs/CRDT)
 - Per-device session management
-- Automated tests + CI
+- CI Pipeline (GitHub Actions)
 - File explorer supporting multiple source files
 - Run-history UI backed by ExecutionLog
 

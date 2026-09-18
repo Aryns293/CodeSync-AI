@@ -232,8 +232,8 @@ export default function Workspace() {
                 const timestamp = new Date().toISOString();
                 setLastModified({ by: user.name, at: timestamp });
                 
-                // Array.from(update) converts Uint8Array to standard array for socket transmission
-                socketRef.current?.emit('yjs-update', { roomId, update: Array.from(update), timestamp });
+                // Send raw Uint8Array for binary transmission over Socket.IO
+                socketRef.current?.emit('yjs-update', { roomId, update, timestamp });
                 socketRef.current?.emit('typing', { roomId });
             }
         });
