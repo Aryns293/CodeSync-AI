@@ -235,11 +235,17 @@ export default function Workspace() {
     const handleCodeChange = (newCode) => {
         setCode(newCode);
         const timestamp = new Date().toISOString();
+        const payload = { roomId, code: newCode, timestamp };
+        const bytes = new TextEncoder().encode(JSON.stringify(payload)).length;
+        
+        console.log("Code size:", newCode.length, "chars");
+        console.log("Payload size:", bytes, "bytes");
+        
         setLastModified({ by: user.name, at: timestamp });
-        // Fix #8: userName is stripped from payload — backend reads it from socket.user
+        
         const t0 = Date.now();
-        socketRef.current?.emit('codeChange', { roomId, code: newCode, timestamp }, () => {
-            console.log(`🔥 ACK Latency (RTT): ${Date.now() - t0}ms`);
+        socketRef.current?.emit('codeChange', payload, () => {
+            console.log(`ACK RTT: ${Date.now() - t0}ms`);
         });
         socketRef.current?.emit('typing', { roomId });
     };
