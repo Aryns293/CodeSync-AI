@@ -165,7 +165,7 @@ export async function executeInSandbox({ language, code, stdin }) {
     });
 
     child.on("close", (exitCode) => {
-      finish({ output: stdout || stderr || `Process exited with code ${exitCode}` });
+      finish({ output: (stdout + (stdout && stderr ? '\n' : '') + stderr) || `Process exited with code ${exitCode}` });
     });
 
     child.stdin.write(stdin || "");
