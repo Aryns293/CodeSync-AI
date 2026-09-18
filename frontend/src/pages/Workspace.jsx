@@ -33,7 +33,7 @@ export default function Workspace() {
     const bindingRef = useRef(null);
     const editorRef = useRef(null);
     const monacoRef = useRef(null);
-    const decorationsRef = useRef([]);
+    const decorationsRef = useRef(null);
     const remoteCursorsRef = useRef({});
     const typingTimeoutsRef = useRef({});
     const [copySuccess, setCopySuccess] = useState(false);
@@ -115,11 +115,6 @@ export default function Workspace() {
     };
 
     useEffect(() => {
-        if (!user) {
-            navigate('/login');
-            return;
-        }
-
         const socket = io(BACKEND_URL, {
             autoConnect: false,
             withCredentials: true, // send the httpOnly jwt cookie for socket auth
@@ -218,7 +213,10 @@ export default function Workspace() {
             }));
         }
         
-        decorationsRef.current = editorRef.current.deltaDecorations(decorationsRef.current, newDecorations);
+        if (!decorationsRef.current || !decorationsRef.current.set) {
+            decorationsRef.current = editorRef.current.createDecorationsCollection();
+        }
+        decorationsRef.current.set(newDecorations);
     };
 
     const handleEditorMount = (editor, monaco) => {

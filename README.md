@@ -60,7 +60,7 @@ Supported languages:
 
 ## 📡 Room Management
 
-- Create private coding rooms.
+- Create coding rooms.
 - Join using a Room ID.
 - Real-time participant synchronization.
 - Automatic room communication through WebSockets.
@@ -98,7 +98,7 @@ Supported languages:
 | **Backend** | Node.js, Express.js, Socket.IO, Yjs, MongoDB, Mongoose, JWT, Zod |
 | **AI** | Gemini API (`@google/genai`) |
 | **Code Execution** | Docker sandbox (local/self-hosted), JDoodle API (Render demo + fallback) |
-| **Others** | Axios, Vite, Nodemon, PM2 (production) |
+| **Others** | Axios, Vite, Nodemon |
 
 ---
 
@@ -122,7 +122,7 @@ cd ..
 ## 3. Configure environment variables
 
 ```bash
-cp .env.example .env               # root - add GEMINI_API_KEY (required)
+cp .env.example .env               # root - add MONGODB_URI, JWT_SECRET, JWT_REFRESH_SECRET, and GEMINI_API_KEY
 cd frontend && cp .env.example .env && cd ..
 ```
 
@@ -159,7 +159,6 @@ npm run dev                 # opens on :5173
 | `JDOODLE_CLIENT_SECRET` | root `.env` | Optional | JDoodle fallback execution — required if Docker is unavailable |
 | `USE_DOCKER_SANDBOX` | root `.env` | Optional | Set to `false` to always use JDoodle instead of Docker |
 | `ALLOWED_ORIGINS` | root `.env` | Optional | Comma-separated list of allowed CORS origins. **Required in production** to prevent open CORS. |
-| `SELF_PING_URL` | root `.env` | Optional | Prevents free-tier host sleep via self-ping |
 | `VITE_BACKEND_URL` | `frontend/.env` | Optional | Points local frontend at local backend (defaults to same-origin) |
 
 ---

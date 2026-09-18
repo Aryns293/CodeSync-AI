@@ -4,12 +4,14 @@ import { generateReview } from './gemini.service.js';
 import { Room } from '../models/Room.model.js';
 import { User } from '../models/User.model.js';
 import * as Y from 'yjs';
+import cookie from 'cookie';
 
 const rooms = new Map();
 const roomData = new Map();
 const ydocs = new Map();
 const lastAction = new Map();
 const saveTimeouts = new Map();
+const roomCompileTime = new Map();
 
 // ─── Cleanup when a room becomes empty ────────────────────────────────────────
 function cleanupRoomIfEmpty(roomId) {
@@ -25,6 +27,7 @@ function cleanupRoomIfEmpty(roomId) {
     rooms.delete(roomId);
     roomData.delete(roomId);
     ydocs.delete(roomId);
+    roomCompileTime.delete(roomId);
 }
 
 function scheduleDbSave(roomId) {
@@ -93,11 +96,8 @@ export const setupSocketHandlers = (io) => {
     // Unauthenticated connections are rejected here before they can touch any room data.
     io.use(async (socket, next) => {
         try {
-            const token = socket.handshake.headers.cookie
-                ?.split(';')
-                .map((c) => c.trim())
-                .find((c) => c.startsWith('jwt='))
-                ?.split('=')[1];
+            const cookies = cookie.parse(socket.handshake.headers.cookie || '');
+            const token = cookies.jwt;
 
             if (!token) {
                 return next(new Error('Authentication error: no token provided'));
@@ -248,6 +248,13 @@ export const setupSocketHandlers = (io) => {
                 });
                 return;
             }
+
+            const now = Date.now();
+            if (now - (roomCompileTime.get(roomId) ?? 0) < 5000) {
+                socket.emit('codeResponse', { run: { output: 'Room is busy — someone just ran code. Wait a moment.' } });
+                return;
+            }
+            roomCompileTime.set(roomId, now);
 
             const roomInfo = roomData.get(roomId);
             const doc = ydocs.get(roomId);

@@ -21,7 +21,7 @@ const api = axios.create({
 //
 // Use a plain axios instance with no interceptors attached. A 401 from
 // this call falls straight through to the catch block as intended.
-const refreshClient = axios.create({
+export const refreshClient = axios.create({
     baseURL: BASE_URL,
     withCredentials: true,
 });
