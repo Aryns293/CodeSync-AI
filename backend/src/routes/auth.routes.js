@@ -1,7 +1,7 @@
 import express from 'express';
 import { register, login, logout, updateProfile, refreshAccessToken } from '../controllers/auth.controller.js';
 import { validate } from '../middlewares/validate.middleware.js';
-import { authLimiter } from '../middlewares/rateLimiter.middleware.js';
+import { authLimiter, apiLimiter } from '../middlewares/rateLimiter.middleware.js';
 import { protect } from '../middlewares/auth.middleware.js';
 import { z } from 'zod';
 
@@ -36,7 +36,7 @@ router.post('/login', authLimiter, validate(loginSchema), login);
 // Rate-limited to prevent brute-force against stored tokens.
 router.post('/refresh', authLimiter, refreshAccessToken);
 
-router.post('/logout', protect, logout);
-router.put('/profile', protect, validate(updateProfileSchema), updateProfile);
+router.post('/logout', apiLimiter, protect, logout);
+router.put('/profile', apiLimiter, protect, validate(updateProfileSchema), updateProfile);
 
 export default router;

@@ -1,11 +1,11 @@
-import { spawn, exec as execCb } from "child_process";
+import { spawn, execFile as execFileCb } from "child_process";
 import { promises as fs } from "fs";
 import path from "path";
 import os from "os";
 import crypto from "crypto";
 import { promisify } from "util";
 
-const exec = promisify(execCb);
+const execFile = promisify(execFileCb);
 
 // One shared image with g++, python3 and a JDK baked in (see execution-image/Dockerfile).
 // Build it once with: docker build -t realtime-ide-sandbox ./backend/execution-image
@@ -54,22 +54,22 @@ export function sandboxSupportsLanguage(language) {
  */
 async function forceKillContainer(containerId) {
   // Phase 1: send SIGKILL directly to the container (not just the CLI process)
-  await exec(`docker kill ${containerId}`).catch(() => {});
+  await execFile("docker", ["kill", containerId]).catch(() => {});
 
   // Phase 2: verify it actually stopped
   try {
-    const { stdout } = await exec(`docker inspect ${containerId}`);
+    const { stdout } = await execFile("docker", ["inspect", containerId]);
     const state = JSON.parse(stdout)[0]?.State?.Status;
     if (state && state !== "exited") {
       // Container survived SIGKILL — force-remove as last resort
-      await exec(`docker rm -f ${containerId}`).catch(() => {});
+      await execFile("docker", ["rm", "-f", containerId]).catch(() => {});
     }
   } catch {
     // inspect failed — container is already gone or was never created; nothing to do
   }
 
   // Phase 3: remove the stopped container record from the host
-  await exec(`docker rm -f ${containerId}`).catch(() => {});
+  await execFile("docker", ["rm", "-f", containerId]).catch(() => {});
 }
 
 /**

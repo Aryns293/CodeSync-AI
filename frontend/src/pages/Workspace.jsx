@@ -253,12 +253,12 @@ export default function Workspace() {
     const executeCode = () => {
         setIsExecuting(true);
         setOutput('Executing...');
-        socketRef.current?.emit('compileCode', { roomId, code, language, stdin });
+        socketRef.current?.emit('compileCode', { roomId, stdin });
     };
 
     const requestReview = () => {
         setIsReviewing(true);
-        socketRef.current?.emit('getAIReview', { roomId, code });
+        socketRef.current?.emit('getAIReview', { roomId });
     };
 
     const copyRoomId = () => {
