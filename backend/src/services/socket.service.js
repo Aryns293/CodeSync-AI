@@ -54,13 +54,7 @@ function scheduleDbSave(roomId) {
     }, 2000));
 }
 
-function detectLang(code) {
-    if (code.includes("#include")) return "C++";
-    if (code.includes("def ") || code.includes("print(")) return "Python";
-    if (code.includes("function") || code.includes("console.")) return "JavaScript";
-    if (code.includes("public class") || code.includes("System.out")) return "Java";
-    return "code";
-}
+
 
 function throttled(socket, key, cooldownMs) {
     const now = Date.now();
@@ -208,7 +202,7 @@ export const setupSocketHandlers = (io) => {
             scheduleDbSave(roomId);
         });
 
-        socket.on('compileCode', async ({ code, roomId, language, stdin }) => {
+        socket.on('compileCode', async ({ roomId, stdin }) => {
             if (!rooms.has(roomId)) return;
 
             if (throttled(socket, 'compile', 3000)) {
@@ -218,18 +212,27 @@ export const setupSocketHandlers = (io) => {
                 return;
             }
 
+            const roomInfo = roomData.get(roomId);
+            if (!roomInfo) return;
+            const code = roomInfo.code || '';
+            const language = roomInfo.language || 'cpp';
+
             const result = await runCode({ language, code, stdin, roomId, userId: socket.user.id });
             socket.emit('codeResponse', { run: result });
         });
 
-        socket.on('getAIReview', async ({ roomId, code }) => {
+        socket.on('getAIReview', async ({ roomId }) => {
             if (throttled(socket, 'review', 8000)) {
                 io.to(roomId).emit('AIReview', 'Please wait a few seconds before requesting another review.');
                 return;
             }
 
             try {
-                const language = roomData.get(roomId)?.language || detectLang(code);
+                const roomInfo = roomData.get(roomId);
+                if (!roomInfo) return;
+                const code = roomInfo.code || '';
+                const language = roomInfo.language || 'cpp';
+                
                 const text = await generateReview(code, language);
                 io.to(roomId).emit('AIReview', text);
             } catch (error) {

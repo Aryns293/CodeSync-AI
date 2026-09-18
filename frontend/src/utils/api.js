@@ -1,7 +1,28 @@
 import axios from 'axios';
 
+const BASE_URL = import.meta.env.VITE_BACKEND_URL
+    ? `${import.meta.env.VITE_BACKEND_URL}/api/v1`
+    : '/api/v1';
+
 const api = axios.create({
-    baseURL: import.meta.env.VITE_BACKEND_URL ? `${import.meta.env.VITE_BACKEND_URL}/api/v1` : '/api/v1',
+    baseURL: BASE_URL,
+    withCredentials: true,
+});
+
+// ── Bare axios instance used ONLY for the refresh call ───────────────────────
+// CRITICAL: the refresh call must NOT go through the `api` interceptor below.
+// If the refresh token is also dead, `api.post('/auth/refresh')` would return
+// a 401, re-enter the interceptor while `isRefreshing` is still true, take the
+// "queue and wait" branch, and push a promise that can never resolve — because
+// `processQueue` is the very next line after the await that is currently
+// suspended waiting for this same promise. The result is a permanent hang:
+// `isRefreshing` stays true forever, the redirect to /login never fires, and
+// every subsequent request silently queues and hangs with no user feedback.
+//
+// Fix: use a plain axios instance with no interceptors attached. A 401 from
+// this call falls straight through to the catch block as intended.
+const refreshClient = axios.create({
+    baseURL: BASE_URL,
     withCredentials: true,
 });
 
@@ -47,8 +68,10 @@ api.interceptors.response.use(
             isRefreshing = true;
 
             try {
-                // Attempt to get a new access token using the httpOnly refresh cookie
-                await api.post('/auth/refresh');
+                // Use the bare refreshClient — NOT `api` — to avoid re-entering this interceptor.
+                // If the refresh token is expired/invalid, the error falls to the catch block
+                // immediately instead of deadlocking the queue.
+                await refreshClient.post('/auth/refresh');
                 processQueue(null);
                 return api(originalRequest);
             } catch (refreshError) {
