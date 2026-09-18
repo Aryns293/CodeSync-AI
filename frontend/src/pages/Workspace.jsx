@@ -7,6 +7,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Play, Copy, Check, Users, Sparkles, LogOut, Loader2, Maximize2, Minimize2, Terminal, DoorOpen, AlertTriangle, Menu, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import clsx from 'clsx';
+import { runBeforeCrdtBenchmark } from '../utils/bandwidthBenchmark';
+
+// Expose benchmark to window for easy execution in DevTools console
+window.runBenchmark = runBeforeCrdtBenchmark;
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || '';
 

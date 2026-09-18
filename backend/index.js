@@ -1,9 +1,9 @@
+import './env.js';
 import express from 'express';
 import http from 'http';
 import { Server } from 'socket.io';
 import path from 'path';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 
 // Config and Services
@@ -22,8 +22,6 @@ import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-dotenv.config({ path: path.join(__dirname, '../.env') });
 
 // ─── Fix #7: CORS allowlist ───────────────────────────────────────────────────
 // Reflect-any-origin + credentials:true is a known security misconfiguration.
