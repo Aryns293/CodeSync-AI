@@ -1,5 +1,8 @@
 import { User } from '../models/User.model.js';
 import { generateToken, generateRefreshToken, verifyRefreshToken } from '../services/auth.service.js';
+import crypto from 'crypto';
+
+const hashToken = (token) => crypto.createHash('sha256').update(token).digest('hex');
 
 // ─── Cookie helpers ───────────────────────────────────────────────────────────
 const ACCESS_COOKIE_OPTS = {
@@ -30,7 +33,7 @@ export const register = async (req, res, next) => {
         const token = generateToken(user._id);
         const refreshToken = generateRefreshToken(user._id);
 
-        user.refreshToken = refreshToken;
+        user.refreshToken = hashToken(refreshToken);
         await user.save();
 
         res.cookie('jwt', token, ACCESS_COOKIE_OPTS);
@@ -59,7 +62,7 @@ export const login = async (req, res, next) => {
         const token = generateToken(user._id);
         const refreshToken = generateRefreshToken(user._id);
 
-        user.refreshToken = refreshToken;
+        user.refreshToken = hashToken(refreshToken);
         await user.save();
 
         res.cookie('jwt', token, ACCESS_COOKIE_OPTS);
@@ -93,7 +96,7 @@ export const refreshAccessToken = async (req, res, next) => {
 
         // 2. Check the token matches what we stored in DB (rotation guard)
         const user = await User.findById(decoded.id);
-        if (!user || user.refreshToken !== incomingRefreshToken) {
+        if (!user || user.refreshToken !== hashToken(incomingRefreshToken)) {
             // Token reuse detected — invalidate the stored token (token rotation)
             if (user) {
                 user.refreshToken = null;
@@ -106,7 +109,7 @@ export const refreshAccessToken = async (req, res, next) => {
         const newAccessToken = generateToken(user._id);
         const newRefreshToken = generateRefreshToken(user._id);
 
-        user.refreshToken = newRefreshToken;
+        user.refreshToken = hashToken(newRefreshToken);
         await user.save();
 
         res.cookie('jwt', newAccessToken, ACCESS_COOKIE_OPTS);
