@@ -35,6 +35,7 @@ export default function Workspace() {
     const monacoRef = useRef(null);
     const decorationsRef = useRef(null);
     const remoteCursorsRef = useRef({});
+    const dragListenersRef = useRef(null);
     const typingTimeoutsRef = useRef({});
     const [copySuccess, setCopySuccess] = useState(false);
     
@@ -72,10 +73,12 @@ export default function Workspace() {
             document.removeEventListener('mousemove', handleMouseMove);
             document.removeEventListener('mouseup', handleMouseUp);
             document.body.style.cursor = 'default';
+            dragListenersRef.current = null;
         };
         document.addEventListener('mousemove', handleMouseMove);
         document.addEventListener('mouseup', handleMouseUp);
         document.body.style.cursor = 'col-resize';
+        dragListenersRef.current = { move: handleMouseMove, up: handleMouseUp };
     };
 
     const startResizingConsole = (e) => {
@@ -88,10 +91,12 @@ export default function Workspace() {
             document.removeEventListener('mousemove', handleMouseMove);
             document.removeEventListener('mouseup', handleMouseUp);
             document.body.style.cursor = 'default';
+            dragListenersRef.current = null;
         };
         document.addEventListener('mousemove', handleMouseMove);
         document.addEventListener('mouseup', handleMouseUp);
         document.body.style.cursor = 'row-resize';
+        dragListenersRef.current = { move: handleMouseMove, up: handleMouseUp };
     };
 
     const startResizingInput = (e) => {
@@ -108,11 +113,23 @@ export default function Workspace() {
             document.removeEventListener('mousemove', handleMouseMove);
             document.removeEventListener('mouseup', handleMouseUp);
             document.body.style.cursor = 'default';
+            dragListenersRef.current = null;
         };
         document.addEventListener('mousemove', handleMouseMove);
         document.addEventListener('mouseup', handleMouseUp);
         document.body.style.cursor = 'col-resize';
+        dragListenersRef.current = { move: handleMouseMove, up: handleMouseUp };
     };
+
+    useEffect(() => {
+        return () => {
+            if (dragListenersRef.current) {
+                document.removeEventListener('mousemove', dragListenersRef.current.move);
+                document.removeEventListener('mouseup', dragListenersRef.current.up);
+                document.body.style.cursor = 'default';
+            }
+        };
+    }, []);
 
     useEffect(() => {
         const socket = io(BACKEND_URL, {

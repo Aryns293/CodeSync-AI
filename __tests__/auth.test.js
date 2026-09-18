@@ -33,7 +33,7 @@ const registerSchema = z.object({
     body: z.object({
         name: z.string().min(2),
         email: z.string().email(),
-        password: z.string().min(6),
+        password: z.string().min(8),
     }),
 });
 const loginSchema = z.object({
@@ -85,7 +85,7 @@ afterEach(async () => {
 async function registerUser(payload = {}) {
     return request(app)
         .post('/api/v1/auth/register')
-        .send({ name: 'Alice', email: 'alice@example.com', password: 'password123', ...payload });
+        .send({ name: 'Alice', email: 'alice@example.com', password: 'Password123!', ...payload });
 }
 
 function extractCookie(res, name) {
@@ -123,7 +123,7 @@ describe('POST /api/v1/auth/register', () => {
         expect(res.body.message).toMatch(/already exists/i);
     });
 
-    it('rejects password shorter than 6 chars with 400', async () => {
+    it('rejects password shorter than 8 chars with 400', async () => {
         const res = await registerUser({ password: 'abc' });
         expect(res.status).toBe(400);
     });
@@ -131,7 +131,7 @@ describe('POST /api/v1/auth/register', () => {
     it('rejects missing name with 400', async () => {
         const res = await request(app)
             .post('/api/v1/auth/register')
-            .send({ email: 'alice@example.com', password: 'password123' });
+            .send({ email: 'alice@example.com', password: 'Password123!' });
         expect(res.status).toBe(400);
     });
 });
@@ -139,13 +139,13 @@ describe('POST /api/v1/auth/register', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 describe('POST /api/v1/auth/login', () => {
     beforeEach(async () => {
-        await registerUser({ name: 'Bob', email: 'bob@example.com', password: 'secret123' });
+        await registerUser({ name: 'Bob', email: 'bob@example.com', password: 'Secret123!' });
     });
 
     it('logs in with correct credentials — token NOT in body', async () => {
         const res = await request(app)
             .post('/api/v1/auth/login')
-            .send({ email: 'bob@example.com', password: 'secret123' });
+            .send({ email: 'bob@example.com', password: 'Secret123!' });
 
         expect(res.status).toBe(200);
         expect(res.body.success).toBe(true);
@@ -158,7 +158,7 @@ describe('POST /api/v1/auth/login', () => {
     it('rejects wrong password with 401', async () => {
         const res = await request(app)
             .post('/api/v1/auth/login')
-            .send({ email: 'bob@example.com', password: 'wrongpassword' });
+            .send({ email: 'bob@example.com', password: 'WrongPassword123!' });
 
         expect(res.status).toBe(401);
         expect(res.body.success).toBe(false);
@@ -167,7 +167,7 @@ describe('POST /api/v1/auth/login', () => {
     it('rejects non-existent email with 401', async () => {
         const res = await request(app)
             .post('/api/v1/auth/login')
-            .send({ email: 'nobody@example.com', password: 'secret123' });
+            .send({ email: 'nobody@example.com', password: 'Secret123!' });
         expect(res.status).toBe(401);
     });
 
@@ -184,7 +184,7 @@ describe('POST /api/v1/auth/refresh', () => {
     let refreshCookieHeader;
 
     beforeEach(async () => {
-        const res = await registerUser({ name: 'Carol', email: 'carol@example.com', password: 'password123' });
+        const res = await registerUser({ name: 'Carol', email: 'carol@example.com', password: 'Password123!' });
         // Supertest returns set-cookie as an array of strings
         const cookies = res.headers['set-cookie'];
         refreshCookieHeader = Array.isArray(cookies)
@@ -228,10 +228,10 @@ describe('POST /api/v1/auth/logout', () => {
     it('clears jwt and refreshToken cookies when authenticated', async () => {
         // logout now requires a valid JWT (protect middleware).
         // Register and login first so we have a real JWT cookie to send.
-        await registerUser({ name: 'Dave', email: 'dave@example.com', password: 'password123' });
+        await registerUser({ name: 'Dave', email: 'dave@example.com', password: 'Password123!' });
         const loginRes = await request(app)
             .post('/api/v1/auth/login')
-            .send({ email: 'dave@example.com', password: 'password123' });
+            .send({ email: 'dave@example.com', password: 'Password123!' });
 
         const jwtCookieRaw = extractCookie(loginRes, 'jwt')?.split(';')[0];  // "jwt=ey..."
         expect(jwtCookieRaw).not.toBeNull();
