@@ -120,6 +120,10 @@ export const setupSocketHandlers = (io) => {
     io.on('connection', (socket) => {
         console.log('A user connected:', socket.id, '→', socket.user.name);
 
+        // Group all of a user's tabs/devices into a single personal room 
+        // to allow forced disconnection on logout/session-expiry.
+        socket.join(`user:${socket.user.id}`);
+
         let currentRoom = null;
 
         socket.on('join', async ({ roomId }) => {
