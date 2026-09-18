@@ -24,9 +24,9 @@ The platform supports multiple programming languages and provides a seamless col
 
 ## 🧑‍💻 Real-Time Collaboration
 
-- **Yjs CRDT Architecture:** Live code synchronization powered by Conflict-Free Replicated Data Types (CRDTs), mathematically guaranteeing 0% concurrent data loss.
-- **Ultra-low Bandwidth:** Sync payloads reduced by 99.9% (from sending the full document to ~20-byte binary deltas per keystroke).
-- Instant, persistent updates powered by Socket.IO and MongoDB state hydration.
+- **Yjs CRDT Architecture:** Live code synchronization powered by Conflict-Free Replicated Data Types (CRDTs), designed to merge concurrent edits safely.
+- **Efficient Sync:** Sends compact binary document updates instead of repeatedly broadcasting the full file.
+- Instant collaboration powered by Socket.IO, with MongoDB-backed room state hydration.
 
 ---
 
@@ -82,6 +82,7 @@ Supported languages:
 
 - Clients connect to the backend using WebSockets.
 - Socket.IO synchronizes editor changes across all connected users.
+- Socket.IO event payloads are validated server-side before they can join rooms, change language, update CRDT state, run code, or request AI review.
 - Code execution runs through a two-path strategy:
   - **Local / self-hosted:** Each run spawns a locked-down, single-use Docker container (`docker run --name <uuid> --network none ...`). Containers are explicitly named, SIGKILL-ed on timeout, verified exited, then removed — no orphaned containers.
   - **Render demo (live URL):** Render's standard web service tier cannot spawn sibling Docker containers. The deployed demo always falls back to JDoodle automatically. If you want to exercise the Docker path, run the project locally with Docker installed.
@@ -122,7 +123,7 @@ cd ..
 ## 3. Configure environment variables
 
 ```bash
-cp .env.example .env               # root - add MONGODB_URI, JWT_SECRET, JWT_REFRESH_SECRET, and GEMINI_API_KEY
+cp .env.example .env               # root - add MONGODB_URI, JWT_SECRET, JWT_REFRESH_SECRET; add GEMINI_API_KEY for AI review
 cd frontend && cp .env.example .env && cd ..
 ```
 
@@ -154,7 +155,7 @@ npm run dev                 # opens on :5173
 | `MONGODB_URI` | root `.env` | **Yes** | MongoDB connection string — server crashes at startup without this |
 | `JWT_SECRET` | root `.env` | **Yes** | Signs access tokens (15 min TTL) — server crashes at startup without this |
 | `JWT_REFRESH_SECRET` | root `.env` | **Yes** | Signs refresh tokens (7 day TTL) — server crashes at startup without this |
-| `GEMINI_API_KEY` | root `.env` | **Yes** | Gemini API key for AI code review |
+| `GEMINI_API_KEY` | root `.env` | Optional | Gemini API key. AI review is disabled without it, but the server still starts |
 | `JDOODLE_CLIENT_ID` | root `.env` | Optional | JDoodle fallback execution — required if Docker is unavailable |
 | `JDOODLE_CLIENT_SECRET` | root `.env` | Optional | JDoodle fallback execution — required if Docker is unavailable |
 | `USE_DOCKER_SANDBOX` | root `.env` | Optional | Set to `false` to always use JDoodle instead of Docker |
@@ -170,11 +171,11 @@ npm run dev                 # opens on :5173
 ├── backend/
 │   ├── index.js
 │   ├── src/
-│   │   ├── controllers/      # Auth, Room, AI, and Execution logic
+│   │   ├── controllers/      # Auth and Room REST handlers
 │   │   ├── middlewares/      # JWT Auth and Rate Limiting
 │   │   ├── models/           # User and Room MongoDB Schemas
 │   │   ├── routes/           # Express API Routes
-│   │   └── services/         # Execution (Docker/JDoodle) & Gemini services
+│   │   └── services/         # Socket collaboration, execution (Docker/JDoodle), Gemini, auth helpers
 │   └── execution-image/      # Dockerfile for sandboxes
 ├── frontend/
 │   ├── src/
@@ -197,9 +198,8 @@ These are intentional portfolio-scope decisions. Each has a known production-gra
 | Trade-off | Current Behaviour | Production Fix |
 |---|---|---|
 | **Single refresh token per user** | Logging in on a second device overwrites the stored token, silently killing the first device's session within 15 min | Per-device session array (store `[{ token, deviceId, issuedAt }]`) |
-| **No Socket.IO Zod validation** | `join`, `yjs-update`, `compileCode`, `getAIReview` trust whatever shape the client sends | Validate event payloads inside each `socket.on` handler using the same Zod schemas used on REST routes |
 | **No global Docker concurrency cap** | Per-socket 3 s throttle prevents rapid reuse from one tab; multiple tabs/scripts can still spawn parallel containers | Add a host-wide semaphore counter (e.g. `p-limit`) to cap simultaneous Docker spawns |
-| **ExecutionLog is write-only** | Every run is logged (code + output, including guests), but nothing reads the collection. 30-day TTL index added to prevent unbounded growth | Build a run-history UI, or drop the model entirely if audit history is not needed |
+| **ExecutionLog is write-only** | Every run is logged (code + output), but nothing reads the collection yet. 30-day TTL index prevents unbounded growth | Build a run-history UI, or drop the model entirely if audit history is not needed |
 | **Room access = UUID = access** | Any authenticated user who knows/guesses the UUID can join and edit — intentional, not an oversight | Add a membership model or owner-only invite system for private rooms |
 
 # 📈 Future Improvements

@@ -9,7 +9,7 @@ const executionLogSchema = new mongoose.Schema({
     user: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
-        required: false, // Optional for guest executions
+        required: false,
     },
     language: {
         type: String,
@@ -34,7 +34,7 @@ const executionLogSchema = new mongoose.Schema({
 
 // TTL index: auto-delete logs after 30 days.
 // Without this, the collection grows forever (full code + output per run,
-// including guest sessions with no userId). 30 days gives useful audit history
+// potentially including failed auth-adjacent edge cases with no userId). 30 days gives useful audit history
 // while preventing unbounded accumulation and data-retention liability.
 executionLogSchema.index({ createdAt: 1 }, { expireAfterSeconds: 2592000 });
 

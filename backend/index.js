@@ -23,7 +23,6 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// ─── Fix #7: CORS allowlist ───────────────────────────────────────────────────
 // Reflect-any-origin + credentials:true is a known security misconfiguration.
 // In production set ALLOWED_ORIGINS="https://yourdomain.com" in your env file.
 const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
@@ -76,7 +75,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-// Setup WebSockets (Fix #8: auth middleware is set up inside setupSocketHandlers)
+// Setup WebSockets; auth middleware is configured inside setupSocketHandlers.
 setupSocketHandlers(io);
 app.set('io', io);
 
