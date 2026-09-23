@@ -8,24 +8,25 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // Verify the session is still live on the server by calling /refresh.
-        // If the httpOnly refreshToken cookie is valid, the server issues a new
-        // access token and we restore the user from localStorage.
-        // If not (expired, logged out elsewhere), we clear local state.
-        // This eliminates the localStorage-only trust vulnerability — a spoofed
-        // localStorage entry no longer grants access to authenticated routes.
+        // Always call /refresh first to validate the session server-side.
+        // Previously this exited early if localStorage was empty — but that
+        // wasted a perfectly valid 7-day refresh cookie (e.g. if the user
+        // manually cleared localStorage but their cookie was still alive).
+        // Now: /refresh is always called. If it succeeds, we restore the UI
+        // from localStorage if available. If it fails, we clear any stale data.
         const bootstrapSession = async () => {
-            const storedUser = localStorage.getItem('user');
-            if (!storedUser) {
-                setLoading(false);
-                return;
-            }
             try {
                 await refreshClient.post('/auth/refresh');
                 // Refresh succeeded — the server confirmed a valid session.
-                setUser(JSON.parse(storedUser));
+                const storedUser = localStorage.getItem('user');
+                if (storedUser) {
+                    setUser(JSON.parse(storedUser));
+                }
+                // If localStorage was cleared but cookie is valid,
+                // user stays null here. They'll need to log in again
+                // to repopulate localStorage. Tokens are still valid in cookies.
             } catch {
-                // Refresh failed — session is invalid. Clear stale local data.
+                // Refresh failed — session is dead. Clear any stale local data.
                 localStorage.removeItem('user');
                 setUser(null);
             } finally {
