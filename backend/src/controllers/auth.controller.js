@@ -114,7 +114,11 @@ export const refreshAccessToken = async (req, res, next) => {
         res.cookie('jwt', newAccessToken, ACCESS_COOKIE_OPTS);
         res.cookie('refreshToken', newRefreshToken, REFRESH_COOKIE_OPTS);
 
-        res.status(200).json({ success: true, message: 'Access token refreshed' });
+        res.status(200).json({
+            success: true,
+            message: 'Access token refreshed',
+            user: { id: user._id, name: user.name, email: user.email },
+        });
     } catch (error) {
         next(error);
     }

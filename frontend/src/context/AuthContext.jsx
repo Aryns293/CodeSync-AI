@@ -16,15 +16,14 @@ export const AuthProvider = ({ children }) => {
         // from localStorage if available. If it fails, we clear any stale data.
         const bootstrapSession = async () => {
             try {
-                await refreshClient.post('/auth/refresh');
-                // Refresh succeeded — the server confirmed a valid session.
-                const storedUser = localStorage.getItem('user');
-                if (storedUser) {
-                    setUser(JSON.parse(storedUser));
+                const { data } = await refreshClient.post('/auth/refresh');
+                // Refresh succeeded — use the fresh user from the server response.
+                // This fixes the stale-UI bug where localStorage held an outdated
+                // name/email (e.g. the user changed their profile on another device).
+                if (data.user) {
+                    setUser(data.user);
+                    localStorage.setItem('user', JSON.stringify(data.user));
                 }
-                // If localStorage was cleared but cookie is valid,
-                // user stays null here. They'll need to log in again
-                // to repopulate localStorage. Tokens are still valid in cookies.
             } catch {
                 // Refresh failed — session is dead. Clear any stale local data.
                 localStorage.removeItem('user');
