@@ -46,7 +46,7 @@ The platform supports multiple programming languages and provides a seamless col
 Executes code in a locked-down, single-use Docker container per run (network disabled, memory/CPU/process limits, non-root user). 
 Features robust execution timeout management:
 - **Explicit Lifecycle:** Containers are uniquely named upfront.
-- **Orphan Prevention:** On timeout, the system explicitly terminates the specific container and verifies its removal, preventing dangling processes and resource leaks on the host.
+- **Orphan Prevention:** On timeout, the system explicitly kills and removes the named container, preventing dangling processes and resource leaks on the host.
 - **Fallback:** Automatic fallback to JDoodle if Docker isn't available on the host.
 
 Supported languages:
@@ -84,7 +84,7 @@ Supported languages:
 - Socket.IO synchronizes editor changes across all connected users.
 - Socket.IO event payloads are validated server-side before they can join rooms, change language, update CRDT state, run code, or request AI review.
 - Code execution runs through a two-path strategy:
-  - **Local / self-hosted:** Each run spawns a locked-down, single-use Docker container (`docker run --name <uuid> --network none ...`). Containers are explicitly named, SIGKILL-ed on timeout, verified exited, then removed — no orphaned containers.
+  - **Local / self-hosted:** Each run spawns a locked-down, single-use Docker container (`docker run --name <uuid> --network none ...`). Containers are explicitly named, SIGKILL-ed on timeout, then unconditionally removed — no orphaned containers.
   - **Render demo (live URL):** Render's standard web service tier cannot spawn sibling Docker containers. The deployed demo always falls back to JDoodle automatically. If you want to exercise the Docker path, run the project locally with Docker installed.
 - AI review requests are processed using the Gemini API.
 - Room access uses a UUID link-share model (anyone with the UUID can join and edit — intentional Google-Docs-style design).
