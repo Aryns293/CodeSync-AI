@@ -11,12 +11,21 @@ import { scheduleDbSave } from '../persistence.js';
 export function registerCollaborationHandlers(io, socket, ctx) {
   socket.on('yjs-update', (payload, callback) => {
     const parsed = parseSocketPayload(socket, yjsUpdatePayloadSchema, payload);
-    if (!parsed) return;
+    if (!parsed) {
+      if (typeof callback === 'function') callback({ error: 'Validation failed' });
+      return;
+    }
     const { roomId, update, timestamp } = parsed;
-    if (roomId !== ctx.currentRoom) return;
+    if (roomId !== ctx.currentRoom) {
+      if (typeof callback === 'function') callback({ error: 'Wrong room' });
+      return;
+    }
 
     const doc = ydocs.get(roomId);
-    if (!doc) return;
+    if (!doc) {
+      if (typeof callback === 'function') callback({ error: 'Doc missing' });
+      return;
+    }
 
     try {
       Y.applyUpdate(doc, new Uint8Array(update));

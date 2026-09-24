@@ -69,9 +69,14 @@ export const AuthProvider = ({ children }) => {
     };
 
     const logout = async () => {
-        await api.post('/auth/logout');
-        setUser(null);
-        localStorage.removeItem('user');
+        try {
+            await api.post('/auth/logout');
+        } catch {
+            // Ignore server error, we still want to clear local state
+        } finally {
+            setUser(null);
+            localStorage.removeItem('user');
+        }
     };
 
     const updateProfile = async (name, password, currentPassword) => {
