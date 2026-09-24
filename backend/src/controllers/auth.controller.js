@@ -95,23 +95,32 @@ export const refreshAccessToken = async (req, res, next) => {
             return res.status(401).json({ success: false, message: 'Invalid or expired refresh token' });
         }
 
-        // 2. Check the token matches what we stored in DB (rotation guard)
         const user = await User.findById(decoded.id);
-        if (!user || user.refreshToken !== hashToken(incomingRefreshToken)) {
-            // Token reuse detected — invalidate the stored token (token rotation)
-            if (user) {
-                user.refreshToken = null;
-                await user.save();
-            }
-            return res.status(401).json({ success: false, message: 'Refresh token reuse detected. Please log in again.' });
+        if (!user) {
+            return res.status(401).json({ success: false, message: 'Invalid or expired refresh token' });
         }
 
-        // 3. Issue a fresh access token and a fresh refresh token (rotation)
         const newAccessToken = generateToken(user._id);
         const newRefreshToken = generateRefreshToken(user._id);
 
-        user.refreshToken = hashToken(newRefreshToken);
-        await user.save();
+        const incomingHash = hashToken(incomingRefreshToken);
+        const newHash = hashToken(newRefreshToken);
+
+        // Atomic compare-and-swap: rotate only if the stored hash still matches
+        // what the client sent. MongoDB guarantees exactly one of two concurrent
+        // refreshes with the same cookie will win; the loser gets null back.
+        const updated = await User.findOneAndUpdate(
+            { _id: decoded.id, refreshToken: incomingHash },
+            { refreshToken: newHash },
+            { new: true }
+        );
+
+        if (!updated) {
+            return res.status(401).json({
+                success: false,
+                message: 'Refresh token is no longer valid. Please log in again.',
+            });
+        }
 
         res.cookie('jwt', newAccessToken, ACCESS_COOKIE_OPTS);
         res.cookie('refreshToken', newRefreshToken, REFRESH_COOKIE_OPTS);
@@ -119,7 +128,7 @@ export const refreshAccessToken = async (req, res, next) => {
         res.status(200).json({
             success: true,
             message: 'Access token refreshed',
-            user: { id: user._id, name: user.name, email: user.email },
+            user: { id: updated._id, name: updated.name, email: updated.email },
         });
     } catch (error) {
         next(error);
