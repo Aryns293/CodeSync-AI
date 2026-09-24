@@ -1,6 +1,6 @@
 import Markdown from 'react-markdown';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, X } from 'lucide-react';
 
 export function AiReviewModal({ open, message, onClose }) {
   return (
@@ -27,10 +27,10 @@ export function AiReviewModal({ open, message, onClose }) {
               </div>
               <button
                 onClick={onClose}
-                className="text-gray-400 hover:text-white"
+                className="text-gray-400 hover:text-white transition-colors"
                 aria-label="Close"
               >
-                ✕
+                <X className="w-5 h-5" />
               </button>
             </div>
             <div className="p-6 overflow-y-auto prose prose-invert prose-indigo max-w-none custom-scrollbar">
