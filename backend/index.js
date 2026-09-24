@@ -9,7 +9,7 @@ import cookieParser from 'cookie-parser';
 // Config and Services
 import { connectDB } from './src/config/db.js';
 import { initGemini } from './src/services/gemini.service.js';
-import { setupSocketHandlers } from './src/services/socket.service.js';
+import { setupSocketHandlers } from './src/sockets/index.js';
 
 // Routes
 import authRoutes from './src/routes/auth.routes.js';

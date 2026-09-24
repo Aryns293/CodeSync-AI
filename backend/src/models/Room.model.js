@@ -24,7 +24,7 @@ const roomSchema = new mongoose.Schema({
         type: Buffer,
         default: null,
     },
-    // These fields are written by socket.service.js on every code change.
+    // These fields are written by persistence.js on every code change.
     // Defining them here prevents Mongoose strict mode from silently dropping them.
     lastModifiedBy: {
         type: String,
