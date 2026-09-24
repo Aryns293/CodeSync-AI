@@ -175,12 +175,13 @@ npm run dev                 # opens on :5173
 │   │   ├── middlewares/      # JWT Auth and Rate Limiting
 │   │   ├── models/           # User and Room MongoDB Schemas
 │   │   ├── routes/           # Express API Routes
-│   │   └── services/         # Socket collaboration, execution (Docker/JDoodle), Gemini, auth helpers
+│   │   ├── services/         # Execution (Docker/JDoodle), Gemini, auth helpers
+│   │   └── sockets/          # Socket handlers (collaboration, execution, room), state, auth, persistence
 │   └── execution-image/      # Dockerfile for sandboxes
 ├── frontend/
 │   ├── src/
 │   │   ├── components/       # UI Components (Navbar, etc)
-│   │   ├── context/          # Auth Context
+│   │   ├── features/         # Feature modules (AuthContext, Workspace, etc)
 │   │   ├── pages/            # Landing, Login, Register, Dashboard, Workspace
 │   │   └── index.css         # Global styles and grid patterns
 │   └── package.json
