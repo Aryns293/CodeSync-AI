@@ -83,7 +83,7 @@ export default function Landing() {
                     </div>
                     <div className="bg-[#151A23] w-full aspect-video overflow-hidden relative">
                         <video
-                            src="/CodeSync.mp4"
+                            src="https://res.cloudinary.com/adihoyqz/video/upload/CodeSync.mp4"
                             autoPlay
                             loop
                             muted
