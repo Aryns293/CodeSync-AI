@@ -1,5 +1,5 @@
 import * as Y from 'yjs';
-import { ydocs, roomData, parseSocketPayload } from '../state.js';
+import { ydocs, roomData, parseSocketPayload, throttled } from '../state.js';
 import {
   yjsUpdatePayloadSchema,
   cursorPayloadSchema,
@@ -54,6 +54,7 @@ export function registerCollaborationHandlers(io, socket, ctx) {
   });
 
   socket.on('typing', (payload) => {
+    if (throttled(socket, 'typing', 500)) return;
     const parsed = parseSocketPayload(socket, roomPayloadSchema, payload);
     if (!parsed || parsed.roomId !== ctx.currentRoom) return;
     socket.to(parsed.roomId).emit('userTyping', {
@@ -63,6 +64,7 @@ export function registerCollaborationHandlers(io, socket, ctx) {
   });
 
   socket.on('cursorChange', (payload) => {
+    if (throttled(socket, 'cursorChange', 50)) return;
     const parsed = parseSocketPayload(socket, cursorPayloadSchema, payload);
     if (!parsed || parsed.roomId !== ctx.currentRoom) return;
     socket.to(parsed.roomId).emit('cursorUpdate', {
