@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../features/auth/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, LogIn, Settings, X, Loader2 } from 'lucide-react';
 import api from '../utils/api';

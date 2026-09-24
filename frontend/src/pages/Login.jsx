@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../features/auth/AuthContext';
 import { motion } from 'framer-motion';
 import { Terminal, ArrowRight, Loader2 } from 'lucide-react';
 import Navbar from '../components/Navbar';

@@ -1,13 +1,13 @@
 import { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
-import { AuthProvider, useAuth } from './context/AuthContext';
+import { AuthProvider, useAuth } from './features/auth/AuthContext';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Landing from './pages/Landing';
 
 const Dashboard = lazy(() => import('./pages/Dashboard'));
-const Workspace = lazy(() => import('./pages/Workspace'));
+const Workspace = lazy(() => import('./features/workspace/WorkspacePage'));
 
 const ProtectedRoute = ({ children }) => {
     const { user, loading } = useAuth();
