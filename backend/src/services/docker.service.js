@@ -165,7 +165,13 @@ export async function executeInSandbox({ language, code, stdin }) {
     });
 
     child.on("close", (exitCode) => {
-      finish({ output: (stdout + (stdout && stderr ? '\n' : '') + stderr) || `Process exited with code ${exitCode}`, isError: exitCode !== 0 });
+      const combined = stdout + stderr;
+      const daemonDown = /Cannot connect to the Docker daemon|docker daemon is not running|error during connect/i.test(combined);
+      finish({
+        output: combined || `Process exited with code ${exitCode}`,
+        sandboxUnavailable: daemonDown,
+        isError: exitCode !== 0,
+      });
     });
 
     child.stdin.on("error", () => {});

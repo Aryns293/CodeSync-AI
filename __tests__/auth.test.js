@@ -28,20 +28,8 @@ import { protect } from '../backend/src/middlewares/auth.middleware.js';
 import { errorHandler } from '../backend/src/middlewares/errorHandler.middleware.js';
 import { z } from 'zod';
 
-// ─── Schemas (same as auth.routes.js) ────────────────────────────────────────
-const registerSchema = z.object({
-    body: z.object({
-        name: z.string().min(2),
-        email: z.string().email(),
-        password: z.string().min(8),
-    }),
-});
-const loginSchema = z.object({
-    body: z.object({
-        email: z.string().email(),
-        password: z.string().min(1),
-    }),
-});
+// ─── Schemas (imported directly from routes to prevent drift) ───────────────
+import { registerSchema, loginSchema } from '../backend/src/routes/auth.routes.js';
 
 // ─── Test App (no rate limiting) ─────────────────────────────────────────────
 function buildTestApp() {
@@ -125,6 +113,11 @@ describe('POST /api/v1/auth/register', () => {
 
     it('rejects password shorter than 8 chars with 400', async () => {
         const res = await registerUser({ password: 'abc' });
+        expect(res.status).toBe(400);
+    });
+
+    it('rejects 8-char password without uppercase/digit with 400', async () => {
+        const res = await registerUser({ password: 'abcdefgh' });
         expect(res.status).toBe(400);
     });
 
