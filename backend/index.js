@@ -29,26 +29,25 @@ const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
     ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim())
     : null;
 
+const allowOrigin = (origin) => {
+    // Allow requests with no origin (curl, Postman, same-origin)
+    if (!origin) return true;
+    
+    // If user defined a strict allowlist, enforce it
+    if (ALLOWED_ORIGINS) {
+        return ALLOWED_ORIGINS.includes(origin);
+    }
+
+    // Only allow fallback reflect-origin in development mode for convenience
+    return process.env.NODE_ENV !== 'production';
+};
+
 const corsOptions = {
     origin: (origin, callback) => {
-        // Allow requests with no origin (curl, Postman, same-origin)
-        if (!origin) return callback(null, true);
-        
-        // If user defined a strict allowlist, enforce it
-        if (ALLOWED_ORIGINS) {
-            if (ALLOWED_ORIGINS.includes(origin)) {
-                return callback(null, true);
-            }
-            return callback(new Error(`CORS: origin ${origin} is not allowed`));
-        }
-
-        // Only allow fallback reflect-origin in development mode for convenience
-        if (process.env.NODE_ENV !== 'production') {
+        if (allowOrigin(origin)) {
             return callback(null, true);
         }
-
-        // In production, reject unconfigured cross-origin requests
-        return callback(new Error(`CORS: origin ${origin} is not allowed (ALLOWED_ORIGINS not set)`));
+        return callback(new Error(`CORS: origin ${origin} is not allowed`));
     },
     credentials: true,
 };
@@ -62,8 +61,10 @@ initGemini();
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
-        // Use strict allowlist if defined, otherwise reflect origin (true) ONLY in dev
-        origin: ALLOWED_ORIGINS || (process.env.NODE_ENV !== 'production' ? true : []),
+        origin: (origin, callback) => {
+            // Socket.io boolean true = reflect origin
+            callback(null, allowOrigin(origin));
+        },
         methods: ['GET', 'POST'],
         credentials: true,
     },
