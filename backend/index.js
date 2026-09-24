@@ -83,13 +83,18 @@ app.set('io', io);
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/room', roomRoutes);
 
+// Explicit 404 for unmatched API routes to prevent the SPA fallback from returning HTML
+app.use('/api', (req, res) => {
+    res.status(404).json({ success: false, message: 'API route not found' });
+});
+
 // Static frontend build for production
 const ROOT = path.join(__dirname, "..");
 const frontendDistPath = path.join(ROOT, "frontend/dist");
 app.use(express.static(frontendDistPath));
 
-app.get("*", (_, res) => {
-    res.sendFile(path.join(ROOT, "frontend/dist/index.html"));
+app.get("*", (_, res, next) => {
+    res.sendFile(path.join(frontendDistPath, "index.html"), (err) => err && next());
 });
 
 // Global Error Handler (must be last middleware)
