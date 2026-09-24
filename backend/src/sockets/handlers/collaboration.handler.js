@@ -48,7 +48,7 @@ export function registerCollaborationHandlers(io, socket, ctx) {
         `[Yjs] Failed to apply update from socket ${socket.id} in room ${roomId}:`,
         error.message
       );
-      socket.emit('error', 'Malformed document update received');
+      socket.emit('appError', 'Malformed document update received');
     }
     if (typeof callback === 'function') callback();
   });
