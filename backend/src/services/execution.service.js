@@ -9,9 +9,8 @@ export const runCode = async ({ language, code, stdin, roomId, userId }) => {
 
     try {
         if (code && code.length > 100 * 1024) {
-            return { output: "Error: Code exceeds maximum allowed length of 100KB.", isError: true };
-        }
-        if (USE_DOCKER_SANDBOX && sandboxSupportsLanguage(language)) {
+            result = { output: "Error: Code exceeds maximum allowed length of 100KB.", isError: true };
+        } else if (USE_DOCKER_SANDBOX && sandboxSupportsLanguage(language)) {
             result = await executeInSandbox({ language, code, stdin });
             
             if (result.sandboxUnavailable) {
