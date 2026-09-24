@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../features/auth/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, LogIn, Settings, X, Loader2 } from 'lucide-react';
-import api from '../utils/api';
+import api from '../shared/api/client';
 import Navbar from '../components/Navbar';
 
 export default function Dashboard() {
