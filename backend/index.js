@@ -53,6 +53,7 @@ const corsOptions = {
 };
 
 const app = express();
+app.set('trust proxy', 1); // Trust first proxy (e.g., Render, Heroku) for rate limiting and true client IPs
 
 // Init Config
 connectDB();
