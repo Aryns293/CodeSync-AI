@@ -106,13 +106,8 @@ export default function WorkspacePage() {
           onOpenSidebar={() => setIsSidebarOpen(true)}
         />
 
-        <div
-          className={clsx(
-            'flex-1 flex flex-col min-h-0',
-            isConsoleMaximized ? 'hidden' : 'flex'
-          )}
-        >
-          <div className="flex-1 relative min-h-0">
+        <div className="flex-1 flex flex-col min-h-0">
+          <div className={clsx('flex-1 relative min-h-0', isConsoleMaximized && 'hidden')}>
             <Editor
               height="100%"
               language={monacoLangFor(session.language)}

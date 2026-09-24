@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useRef } from 'react';
 import api, { refreshClient } from '../../shared/api/client';
 
 const AuthContext = createContext();
@@ -18,7 +18,11 @@ export const AuthProvider = ({ children }) => {
         return !localStorage.getItem('user');
     });
 
+    const didBootstrap = useRef(false);
     useEffect(() => {
+        if (didBootstrap.current) return;
+        didBootstrap.current = true;
+        
         // Always call /refresh first to validate the session server-side.
         // Previously this exited early if localStorage was empty — but that
         // wasted a perfectly valid 7-day refresh cookie (e.g. if the user

@@ -57,6 +57,9 @@ async function cleanupRoomIfEmpty(roomId) {
 
   await persistRoomState(roomId);
 
+  const still = rooms.get(roomId);
+  if (still && still.size > 0) return;   // someone joined while we were saving
+
   rooms.delete(roomId);
   roomData.delete(roomId);
   ydocs.delete(roomId);
