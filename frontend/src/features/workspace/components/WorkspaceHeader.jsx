@@ -46,7 +46,11 @@ export function WorkspaceHeader({
 
         <select
           value={language}
-          onChange={(e) => onLanguageChange(e.target.value)}
+          onChange={(e) => {
+            if (window.confirm("Changing the language will not clear your existing code. Do you want to continue?")) {
+              onLanguageChange(e.target.value);
+            }
+          }}
           className="bg-[#151A23] border border-[#232B3A] text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:border-indigo-500 transition-colors text-gray-200"
         >
           {LANGUAGES.map((l) => (
