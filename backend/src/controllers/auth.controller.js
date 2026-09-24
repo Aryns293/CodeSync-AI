@@ -22,7 +22,8 @@ const REFRESH_COOKIE_OPTS = {
 // ─── Register ─────────────────────────────────────────────────────────────────
 export const register = async (req, res, next) => {
     try {
-        const { name, email, password } = req.body;
+        const { name, password } = req.body;
+        const email = req.body.email.trim().toLowerCase();
 
         const user = await User.create({ name, email, password });
         const token = generateToken(user._id);
@@ -51,7 +52,8 @@ export const register = async (req, res, next) => {
 // ─── Login ────────────────────────────────────────────────────────────────────
 export const login = async (req, res, next) => {
     try {
-        const { email, password } = req.body;
+        const { password } = req.body;
+        const email = req.body.email.trim().toLowerCase();
 
         const user = await User.findOne({ email });
         if (!user || !(await user.comparePassword(password))) {
