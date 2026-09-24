@@ -26,4 +26,14 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'monaco': ['monaco-editor', '@monaco-editor/react', 'y-monaco'],
+          'vendor': ['react', 'react-dom', 'react-router-dom', 'framer-motion'],
+        },
+      },
+    },
+  },
 })
