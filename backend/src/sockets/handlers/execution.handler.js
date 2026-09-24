@@ -27,29 +27,46 @@ export function registerExecutionHandlers(io, socket, ctx) {
 
     // Per-room cooldown so multiple users don't step on each other.
     const now = Date.now();
-    if (now - (roomCompileTime.get(roomId) ?? 0) < 5000) {
+    const lastCompile = roomCompileTime.get(roomId);
+    
+    if (lastCompile === Infinity) {
+      socket.emit('codeResponse', {
+        run: { output: 'Room is busy — code is currently executing.' },
+      });
+      return;
+    }
+    
+    if (now - (lastCompile ?? 0) < 5000) {
       socket.emit('codeResponse', {
         run: { output: 'Room is busy — someone just ran code. Wait a moment.' },
       });
       return;
     }
-    roomCompileTime.set(roomId, now);
+    
+    roomCompileTime.set(roomId, Infinity); // Lock the room
 
     const roomInfo = roomData.get(roomId);
     const doc = ydocs.get(roomId);
-    if (!roomInfo || !doc) return;
+    if (!roomInfo || !doc) {
+      roomCompileTime.delete(roomId);
+      return;
+    }
 
     const code = doc.getText('code').toString();
     const language = roomInfo.language || 'cpp';
 
-    const result = await runCode({
-      language,
-      code,
-      stdin,
-      roomId,
-      userId: socket.user.id,
-    });
-    io.to(roomId).emit('codeResponse', { run: result });
+    try {
+      const result = await runCode({
+        language,
+        code,
+        stdin,
+        roomId,
+        userId: socket.user.id,
+      });
+      io.to(roomId).emit('codeResponse', { run: result });
+    } finally {
+      roomCompileTime.set(roomId, Date.now()); // Start cooldown after completion
+    }
   });
 
   socket.on('getAIReview', async (payload) => {
