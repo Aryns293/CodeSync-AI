@@ -1,8 +1,5 @@
-import jwt from 'jsonwebtoken';
+import { verifyAccessToken } from '../services/auth.service.js';
 import { User } from '../models/User.model.js';
-
-// JWT_SECRET is guaranteed to exist — auth.service.js throws at module-load time if missing.
-const JWT_SECRET = process.env.JWT_SECRET;
 
 export const protect = async (req, res, next) => {
     let token;
@@ -18,7 +15,7 @@ export const protect = async (req, res, next) => {
     }
 
     try {
-        const decoded = jwt.verify(token, JWT_SECRET);
+        const decoded = verifyAccessToken(token);
         req.user = await User.findById(decoded.id).select('-password -refreshToken');
         // Guard: token valid but user was deleted after it was issued
         if (!req.user) {
