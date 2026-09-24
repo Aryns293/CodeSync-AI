@@ -74,7 +74,7 @@ export function useEditorBinding({
       socket.off('cursorUpdate', onCursor);
       socket.off('userJoined', onUsers);
     };
-  }, [socketRef, user?.id, redrawCursors]);
+  }, [socketRef, user?.id, redrawCursors, roomId]);
 
   const handleEditorMount = useCallback(
     (editor, monaco) => {

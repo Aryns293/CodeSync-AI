@@ -49,6 +49,9 @@ export function registerExecutionHandlers(io, socket, ctx) {
     const doc = ydocs.get(roomId);
     if (!roomInfo || !doc) {
       roomCompileTime.delete(roomId);
+      socket.emit('codeResponse', {
+        run: { output: 'Room is not ready yet — please try again in a moment.', isError: true },
+      });
       return;
     }
 
