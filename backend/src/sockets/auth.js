@@ -11,14 +11,18 @@ export const socketAuth = async (socket, next) => {
     const token = cookies.jwt;
 
     if (!token) {
-      return next(new Error('Authentication error: no token provided'));
+      const err = new Error('Authentication error: no token provided');
+      err.data = { code: 'AUTH_REQUIRED' };
+      return next(err);
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const user = await User.findById(decoded.id).select('-password -refreshToken');
 
     if (!user) {
-      return next(new Error('Authentication error: user not found'));
+      const err = new Error('Authentication error: user not found');
+      err.data = { code: 'AUTH_REQUIRED' };
+      return next(err);
     }
 
     socket.user = {
@@ -28,6 +32,8 @@ export const socketAuth = async (socket, next) => {
     };
     next();
   } catch {
-    next(new Error('Authentication error: invalid token'));
+    const err = new Error('Authentication error: invalid token');
+    err.data = { code: 'AUTH_REQUIRED' };
+    next(err);
   }
 };

@@ -41,7 +41,20 @@ export function useRoomSession({ roomId, user }) {
     });
 
     socket.on('disconnect', () => setConnected(false));
-    socket.on('connect_error', () => setConnected(false));
+    
+    socket.on('connect_error', async (err) => {
+      if (err?.data?.code === 'AUTH_REQUIRED') {
+        try {
+          const { refreshClient } = await import('../../shared/api/client');
+          await refreshClient.post('/auth/refresh');
+          socket.connect();
+        } catch {
+          navigate('/login');
+        }
+      } else {
+        setConnected(false);
+      }
+    });
 
     socket.on('roomError', ({ message }) => {
       setOutput(message || 'Room not found');
