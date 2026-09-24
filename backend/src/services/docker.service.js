@@ -40,16 +40,18 @@ export function sandboxSupportsLanguage(language) {
 }
 
 /**
- * Forcibly kills a named container and verifies it stopped.
+ * Forcibly kills a named container and removes its record from the host.
  *
- * Three-phase cleanup:
- *  1. `docker kill`    — sends SIGKILL to PID 1 inside the container.
- *  2. `docker inspect` — confirms the container actually reached "exited" state.
- *                        docker kill is a signal, not a guarantee.
- *  3. `docker rm -f`   — removes the container record unconditionally so
- *                        orphaned containers don't accumulate on the host.
+ * Two-phase cleanup:
+ *  1. `docker kill`  — sends SIGKILL to PID 1 inside the container.
+ *                      This stops the running process; the container itself
+ *                      still exists in "exited" state afterwards.
+ *  2. `docker rm -f` — unconditionally removes the container record, whether
+ *                      it's still running or already exited. This is why an
+ *                      explicit "inspect / verify exited" step is not needed:
+ *                      `rm -f` handles both states.
  *
- * All phases swallow their own errors — a failure in one step must never
+ * Both commands swallow their own errors — a failure in one step must never
  * propagate back to the caller or cause an unhandled rejection.
  */
 async function forceKillContainer(containerId) {
