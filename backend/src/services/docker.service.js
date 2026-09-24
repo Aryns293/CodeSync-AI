@@ -56,19 +56,7 @@ async function forceKillContainer(containerId) {
   // Phase 1: send SIGKILL directly to the container (not just the CLI process)
   await execFile("docker", ["kill", containerId]).catch(() => {});
 
-  // Phase 2: verify it actually stopped
-  try {
-    const { stdout } = await execFile("docker", ["inspect", containerId]);
-    const state = JSON.parse(stdout)[0]?.State?.Status;
-    if (state && state !== "exited") {
-      // Container survived SIGKILL — force-remove as last resort
-      await execFile("docker", ["rm", "-f", containerId]).catch(() => {});
-    }
-  } catch {
-    // inspect failed — container is already gone or was never created; nothing to do
-  }
-
-  // Phase 3: remove the stopped container record from the host
+  // Phase 2: remove the stopped container record from the host unconditionally
   await execFile("docker", ["rm", "-f", containerId]).catch(() => {});
 }
 
