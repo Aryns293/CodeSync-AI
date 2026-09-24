@@ -88,6 +88,7 @@ export default function Landing() {
                             loop
                             muted
                             playsInline
+                            preload="auto"
                             className="w-full h-full object-cover"
                         />
                     </div>
