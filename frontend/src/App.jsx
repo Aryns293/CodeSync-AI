@@ -8,6 +8,7 @@ import Landing from './pages/Landing';
 
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Workspace = lazy(() => import('./features/workspace/WorkspacePage'));
+const NotFound = lazy(() => import('./pages/NotFound'));
 
 const ProtectedRoute = ({ children }) => {
     const { user, loading } = useAuth();
@@ -74,6 +75,10 @@ export default function App() {
                         <Route 
                             path="/room/:roomId" 
                             element={<ProtectedRoute><Workspace /></ProtectedRoute>} 
+                        />
+                        <Route 
+                            path="*" 
+                            element={<NotFound />} 
                         />
                     </Routes>
                 </Suspense>
