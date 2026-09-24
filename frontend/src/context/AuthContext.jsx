@@ -4,8 +4,19 @@ import api, { refreshClient } from '../utils/api';
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-    const [user, setUser] = useState(null);
-    const [loading, setLoading] = useState(true);
+    const [user, setUser] = useState(() => {
+        try {
+            const cached = localStorage.getItem('user');
+            return cached ? JSON.parse(cached) : null;
+        } catch {
+            return null;
+        }
+    });
+    const [loading, setLoading] = useState(() => {
+        // If we already have a cached user, no need to block the UI.
+        // The background refresh will still run to re-validate the session.
+        return !localStorage.getItem('user');
+    });
 
     useEffect(() => {
         // Always call /refresh first to validate the session server-side.
