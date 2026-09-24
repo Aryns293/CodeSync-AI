@@ -33,8 +33,8 @@ const updateProfileSchema = z.object({
 router.post('/register', authLimiter, validate(registerSchema), register);
 router.post('/login', authLimiter, validate(loginSchema), login);
 
-// Rate-limited to prevent brute-force against stored tokens.
-router.post('/refresh', authLimiter, refreshAccessToken);
+// Use apiLimiter instead of authLimiter to avoid 429 errors from NAT/VPN shared IPs
+router.post('/refresh', apiLimiter, refreshAccessToken);
 
 router.post('/logout', apiLimiter, protect, logout);
 router.put('/profile', apiLimiter, protect, validate(updateProfileSchema), updateProfile);
