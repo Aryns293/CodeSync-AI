@@ -14,6 +14,7 @@ export function useEditorBinding({
   const bindingRef = useRef(null);
   const decorationsRef = useRef(null);
   const remoteCursorsRef = useRef({});
+  const disposeRef = useRef(null);
 
   const redrawCursors = useCallback(() => {
     if (!editorRef.current || !monacoRef.current) return;
@@ -89,7 +90,7 @@ export function useEditorBinding({
         new Set([editor])
       );
 
-      ydoc.on('update', (update, origin) => {
+      const updateHandler = (update, origin) => {
         if (origin === 'remote') return;
         onLocalEdit?.();
         socketRef.current?.emit('yjs-update', {
@@ -98,17 +99,26 @@ export function useEditorBinding({
           timestamp: new Date().toISOString(),
         });
         socketRef.current?.emit('typing', { roomId });
-      });
+      };
+      
+      ydoc.on('update', updateHandler);
 
-      editor.onDidChangeCursorPosition((e) => {
+      const cursorDispose = editor.onDidChangeCursorPosition((e) => {
         socketRef.current?.emit('cursorChange', { roomId, position: e.position });
       });
+
+      disposeRef.current = () => {
+        ydoc.off('update', updateHandler);
+        cursorDispose?.dispose?.();
+        disposeRef.current = null;
+      };
     },
     [ydocRef, socketRef, roomId, onLocalEdit]
   );
 
   useEffect(() => {
     return () => {
+      disposeRef.current?.();
       bindingRef.current?.destroy();
       bindingRef.current = null;
     };
