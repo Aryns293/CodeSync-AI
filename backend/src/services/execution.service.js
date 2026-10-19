@@ -44,17 +44,19 @@ export const runCode = async ({ language, code, stdin, roomId, userId }) => {
         return result;
     } catch (error) {
         console.error("runCode error:", error);
-        
-        await ExecutionLog.create({
-            roomId,
-            user: userId || null,
-            language,
-            code,
-            output: `Error: ${error.message}`,
-            executionTimeMs: Date.now() - startTime,
-            success: false
-        });
-
+        try {
+            await ExecutionLog.create({
+                roomId,
+                user: userId || null,
+                language,
+                code,
+                output: `Error: ${error.message}`,
+                executionTimeMs: Date.now() - startTime,
+                success: false
+            });
+        } catch (logError) {
+            console.error("Failed to log execution failure:", logError);
+        }
         return { output: `Error: ${error.message}` };
     }
 };

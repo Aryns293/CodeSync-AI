@@ -67,6 +67,11 @@ export function registerExecutionHandlers(io, socket, ctx) {
         userId: socket.user.id,
       });
       io.to(roomId).emit('codeResponse', { run: result });
+    } catch (error) {
+      console.error('compileCode unexpected error:', error);
+      io.to(roomId).emit('codeResponse', {
+        run: { output: `Error: ${error.message}`, isError: true },
+      });
     } finally {
       roomCompileTime.set(roomId, Date.now()); // Start cooldown after completion
     }
