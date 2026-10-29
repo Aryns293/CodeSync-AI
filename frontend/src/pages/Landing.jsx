@@ -77,7 +77,7 @@ export default function Landing() {
                         </div>
                         <div className="flex-1 flex justify-center">
                             <div className="bg-[#0B0E14] px-4 py-1 rounded text-xs text-slate-400 border border-white/5">
-                                index.js - CodeSync AI
+                                dijkstra.cpp - CodeSync AI
                             </div>
                         </div>
                     </div>
