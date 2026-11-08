@@ -65,10 +65,12 @@ export function registerRoomHandlers(io, socket, ctx) {
     if (roomInfo.language) socket.emit('languageUpdate', roomInfo.language);
   });
 
-  socket.on('leaveRoom', () => {
-    if (!ctx.currentRoom) return;
-    socket.leave(ctx.currentRoom);
-    void removeUserFromRoom(io, socket, ctx.currentRoom);
+  socket.on('leaveRoom', async () => {
+    const roomId = ctx.currentRoom;
+    if (!roomId) return;
+
     ctx.currentRoom = null;
+    socket.leave(roomId);
+    await removeUserFromRoom(io, socket, roomId);
   });
 }
